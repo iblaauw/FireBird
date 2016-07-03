@@ -1,5 +1,6 @@
 build/
 
 *.swp
+*.stackdump
 
 firebird.exe
