@@ -31,5 +31,23 @@ int main(int argc, char** argv)
 
     cout << "Compiling " << inname << " -> " << outname << endl;
 
+    ifstream infile;
+    infile.open(inname, ifstream::binary);
+    if (!infile)
+    {
+        cout << "Error: Couldn't open file " << inname <<  endl;
+        return -1;
+    }
+
+    ofstream outfile;
+    outfile.open(outname, ofstream::trunc | ofstream::binary);
+    if (!outfile)
+    {
+        cout << "Error: Couldn't open or create file " << outname <<  endl;
+        return -1;
+    }
+
+
+
     return 0;
 }
