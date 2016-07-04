@@ -1,10 +1,12 @@
+OUTDIR=./build
+
 SOURCE_DIRS=core
 
 SOURCES=$(foreach dir,$(SOURCE_DIRS),$(wildcard $(dir)/*.cpp))
-
 OBJECTS=$(SOURCES:%.cpp=$(OUTDIR)/%.o)
 
-OUTDIR=./build
+EGG_SOURCES=$(wildcard egg/*.cpp)
+EGG_OBJECTS=$(EGG_SOURCES:%.cpp=$(OUTDIR)/%.o)
 
 CPPFLAGS=--std=c++11
 
@@ -12,11 +14,13 @@ CPPFLAGS=--std=c++11
 
 default: all
 
-all: firebird
+all: firebird fireegg
 
 firebird: $(OBJECTS)
 	g++ $^ -o $@
 
+fireegg: $(EGG_OBJECTS)
+	g++ $^ -o $@
 
 $(OUTDIR)/%.o : %.cpp
 	mkdir -p $(@D)

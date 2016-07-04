@@ -1,4 +1,5 @@
 #include "parse_args.h"
+#include "common.h"
 #include <iostream>
 #include <cctype>
 #include <cstdlib>
@@ -11,9 +12,9 @@ static void Add(std::map<KeyType, ValType>& selfMap, KeyType& key, ValType& val)
 {
     auto iter = selfMap.find(key);
     if (iter != selfMap.end())
-        throw ParseException("Option already exists: " + std::to_string(key));
+        throw ParseException("Option already exists: " + patch::to_string(key));
 
-    selfMap.insert(iter, std::map<KeyType,ValType>::value_type(key, val));
+    selfMap.insert(iter, typename std::map<KeyType,ValType>::value_type(key, val));
 }
 
 ParseSpec::ParseSpec(std::string spec) :
@@ -67,7 +68,7 @@ ParseSpec::ParseSpec(std::string spec) :
     AddShort(current, takeArg, required);
 }
 
-void ParseSpec::AddShort(char val, bool takesArg, bool required)
+void ParseSpec::AddShort(char val, bool takesArg, bool isRequired)
 {
     Add(shorts, val, takesArg);
     if (isRequired)
@@ -95,7 +96,7 @@ void ParseSpec::TryGet(char shortVal, bool* exists, bool* takeArg)
     assert(takeArg != nullptr);
 
     auto iter = shorts.find(shortVal);
-    if (iter == shorts.endpos())
+    if (iter == shorts.end())
     {
         *exists = false;
         return;
@@ -111,7 +112,7 @@ void ParseSpec::TryGet(std::string longVal, bool* exists, bool* takeArg)
     assert(takeArg != nullptr);
 
     auto iter = longs.find(longVal);
-    if (iter == longs.endpos())
+    if (iter == longs.end())
     {
         *exists = false;
         return;
@@ -121,6 +122,18 @@ void ParseSpec::TryGet(std::string longVal, bool* exists, bool* takeArg)
     *takeArg = iter->second;
 }
 
+ParseArgs::ParseArgs(ParseSpec* spec) :
+    spec(spec),
+    expectingArg(false),
+    isLong(false),
+    current(),
+    currentLong(),
+    shortArgs(),
+    longArgs(),
+    unmarked()
+{}
+
+
 /*static*/ ParseArgs ParseArgs::Parse(int argc, char** argv, ParseSpec& spec)
 {
     ParseArgs args(&spec);
@@ -129,6 +142,8 @@ void ParseSpec::TryGet(std::string longVal, bool* exists, bool* takeArg)
         char* val = argv[i];
         args.HandleArg(val);
     }
+
+    return args;
 }
 
 void ParseArgs::HandleArg(char* val)
@@ -139,14 +154,14 @@ void ParseArgs::HandleArg(char* val)
 
     if (val[0] != '-')
     {
-        HandleUnmarked(val, spec);
+        HandleUnmarked(val);
         return;
     }
 
     if (length == 1)
     {
         std::cout << "Invalid argument value: -" << std::endl;
-        spec.PrintHelpText();
+        spec->PrintHelpText();
         exit(-1);
         return;
     }
@@ -250,12 +265,13 @@ void ParseArgs::ExpectingArgGuard()
 
 bool ParseArgs::IsSet(char name)
 {
-    return shortArgs.find(name) != shortArgs.endpos();
+    return shortArgs.find(name) != shortArgs.end();
 }
 
 bool ParseArgs::IsSet(std::string name)
 {
-    bool islong = longArgs.find(name) != longArgs.endpos();
+    bool islong = longArgs.find(name) != longArgs.end();
+
     if (islong)
         return true;
 
@@ -265,18 +281,18 @@ bool ParseArgs::IsSet(std::string name)
     return false;
 }
 
-char* Get(char name)
+char* ParseArgs::Get(char name)
 {
     auto iter = shortArgs.find(name);
-    if (iter != shortArgs.endpos())
+    if (iter != shortArgs.end())
         return iter->second;
     return nullptr;
 }
 
-char* Get(std::string name)
+char* ParseArgs::Get(std::string name)
 {
     auto iter = longArgs.find(name);
-    if (iter != longArgs.endpos())
+    if (iter != longArgs.end())
         return iter->second;
 
     if (name.size() == 1)

@@ -1,31 +1,26 @@
+#include "parse_args.h"
 #include <iostream>
-#include <ifstream>
+#include <fstream>
 #include <vector>
 #include <map>
 
 using namespace std;
 
-struct program_args
-{
-    std::vector<int> unflagged;
-    std::vector<
-};
-
-static void parse_args(int argc, char** argv, program_args& args)
-{
-    std::vector<int>
-}
-
 int main(int argc, char** argv)
 {
-    if (argc <= 1)
+    ParseSpec argspec("o+");
+    argspec.AddLong("version", false);
+    ParseArgs args = ParseArgs::Parse(argc, argv, argspec);
+
+    if (args.IsSet("version"))
     {
-        cout << "Error: please specify a file" << endl;
+        cout << "FireEgg, v. 0.1.0" << endl;
+        return 0;
     }
 
-    char* filename = argv[1];
+    char* filename = args.Get('o');
+    cout << "Processing file " << filename << endl;
 
-    cout << 
 
     return 0;
 }

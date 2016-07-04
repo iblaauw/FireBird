@@ -12,7 +12,7 @@ class ParseSpec
 private:
     typedef std::map<char, bool> ShortMap;
     typedef std::map<std::string, bool> LongMap;
-    typedef std::map<std::string, char> AssociationMap
+    typedef std::map<std::string, char> AssociationMap;
 
     ShortMap shorts;
     LongMap longs;
@@ -44,7 +44,7 @@ public:
     char* Get(std::string name);
     std::vector<char*> GetUnmarked() { return unmarked; }
 private:
-    ParseArgs(ParseSpec* spec) : spec(spec) {}
+    ParseArgs(ParseSpec* spec);
     void HandleArg(char* val);
     void HandleUnmarked(char* val);
     void HandleShort(char* val);
@@ -62,12 +62,12 @@ private:
     std::vector<char*> unmarked;
 };
 
-class ParseException : public exception
+class ParseException : public std::exception
 {
 private:
     std::string message;
 public:
     ParseException(const char* message) : message(message) {}
     ParseException(std::string message) : message(message) {}
-    override const char* what() const { return message.c_str(); }
-}
+    const char* what() const throw() override { return message.c_str(); }
+};
