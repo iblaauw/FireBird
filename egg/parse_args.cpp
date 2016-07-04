@@ -143,6 +143,8 @@ ParseArgs::ParseArgs(ParseSpec* spec) :
         args.HandleArg(val);
     }
 
+    args.Validate();
+
     return args;
 }
 
@@ -261,6 +263,21 @@ void ParseArgs::ExpectingArgGuard()
 
     spec->PrintHelpText();
     exit(-1);
+}
+
+void ParseArgs::Validate()
+{
+    ExpectingArgGuard();
+
+    for (char c : spec->required)
+    {
+        if (shortArgs.find(c) == shortArgs.end())
+        {
+            std::cout << "Required option was not given: -" << c << std::endl;
+            spec->PrintHelpText();
+            exit(-1);
+        }
+    }
 }
 
 bool ParseArgs::IsSet(char name)

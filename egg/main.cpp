@@ -2,7 +2,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <map>
 
 using namespace std;
 
@@ -18,9 +17,19 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    char* filename = args.Get('o');
-    cout << "Processing file " << filename << endl;
+    char* outname = args.Get('o');
 
+    const auto& unmarked = args.GetUnmarked();
+    if (unmarked.size() == 0)
+    {
+        cout << "No input files specified!" << endl;
+        argspec.PrintHelpText();
+        return -1;
+    }
+
+    char* inname = unmarked[0];
+
+    cout << "Compiling " << inname << " -> " << outname << endl;
 
     return 0;
 }

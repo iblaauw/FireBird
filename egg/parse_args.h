@@ -42,7 +42,7 @@ public:
     bool IsSet(std::string name);
     char* Get(char name);
     char* Get(std::string name);
-    std::vector<char*> GetUnmarked() { return unmarked; }
+    const std::vector<char*>& GetUnmarked() { return unmarked; }
 private:
     ParseArgs(ParseSpec* spec);
     void HandleArg(char* val);
@@ -50,6 +50,7 @@ private:
     void HandleShort(char* val);
     void HandleLong(char* val);
     void ExpectingArgGuard();
+    void Validate();
 
     ParseSpec* spec;
     bool expectingArg;
