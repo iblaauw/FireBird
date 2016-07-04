@@ -8,7 +8,12 @@ OBJECTS=$(SOURCES:%.cpp=$(OUTDIR)/%.o)
 EGG_SOURCES=$(wildcard egg/*.cpp)
 EGG_OBJECTS=$(EGG_SOURCES:%.cpp=$(OUTDIR)/%.o)
 
-CPPFLAGS=--std=c++11
+COMMON_SOURCES=$(wildcard common/*.cpp)
+COMMON_OBJECTS=$(COMMON_SOURCES:%.cpp=$(OUTDIR)/%.o)
+
+INCLUDES=-Icommon
+
+CPPFLAGS=--std=c++11 -Wall
 
 .PHONY: clean
 
@@ -16,17 +21,19 @@ default: all
 
 all: firebird fireegg
 
-firebird: $(OBJECTS)
+firebird: $(OBJECTS) $(COMMON_OBJECTS)
 	g++ $^ -o $@
 
-fireegg: $(EGG_OBJECTS)
+fireegg: $(EGG_OBJECTS) $(COMMON_OBJECTS)
 	g++ $^ -o $@
 
 $(OUTDIR)/%.o : %.cpp
 	mkdir -p $(@D)
-	g++ $(CPPFLAGS) -c $^ -o $@
+	g++ $(CPPFLAGS) $(INCLUDES) -c $^ -o $@
 
 
 clean:
 	rm -fr build/*
 	rm -f firebird.exe
+	rm -f fireegg.exe
+	rm -f *.stackdump

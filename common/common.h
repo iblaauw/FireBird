@@ -1,5 +1,13 @@
+#pragma once
+
+#include <cstdint>
 #include <string>
 #include <sstream>
+
+#define FIRE_DEBUG
+
+typedef uint8_t byte;
+typedef uint32_t word;
 
 namespace patch
 {
@@ -12,4 +20,5 @@ namespace patch
         return ss.str();
     }
 }
+
 
