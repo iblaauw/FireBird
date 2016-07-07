@@ -13,10 +13,8 @@ void FileCompiler::Run(std::ifstream& infile, const std::string& inname,
     std::string line;
     try
     {
-        while (infile)
+        while (std::getline(infile, line))
         {
-            std::getline(infile, line);
-
             parser.Parse(line);
 
             linenum++;
@@ -32,11 +30,15 @@ void FileCompiler::Run(std::ifstream& infile, const std::string& inname,
         return;
     }
 
-    size_t size = parser.ops.size();
+    size_t size = parser.ops.size() * sizeof(opvalue);
     const char* data = reinterpret_cast<const char*>(parser.ops.data());
+
+    std::cout << "Data size to write: " << size << std::endl;
 
     ofile.seekp(std::ios_base::beg); // seek to beginning
     ofile.write(data, size);
+    ofile.flush();
+
 
     std::cout << "Successfully compiled " << inname << " -> " << outname << std::endl;
 }

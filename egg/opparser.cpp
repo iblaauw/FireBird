@@ -4,7 +4,9 @@
 #include "split.h"
 #include "stringutils.h"
 #include <cassert>
+#include <cstring>
 #include <string>
+#include <iostream>
 
 #define COMMENT_CHAR '#'
 #define LABEL_CHAR ':'
@@ -62,7 +64,7 @@ void OpParser::Parse(const std::string& line)
 
 std::string OpParser::RemoveComments(const std::string& line)
 {
-    Tokens tokens = patch::split(line, COMMENT_CHAR);
+    Tokens tokens = utils::Split(line, COMMENT_CHAR, true);
     // Either an entire line of '#'s, or an empty line
     if (tokens.size() == 0)
         return "";
@@ -80,7 +82,12 @@ void OpParser::ParseOp(const Tokens& tokens)
         throw CompileException("Error: unknown opcode '" + opcode + "'");
 
     opvalue op;
+    memset(&op, 0, sizeof(opvalue));
     op.op = iter->second;
+
+    std::cout << "iter->first " << iter->first << std::endl;
+    std::cout << "iter->second " << (int)iter->second << std::endl;
+
 
     unsigned int numArgs = opTypeMap.at(iter->second);
     HandleOpArgs(op, tokens, numArgs);
@@ -99,6 +106,9 @@ static bool IsRegister(const std::string& token)
 void OpParser::HandleOpArgs(opvalue& val, const Tokens& tokens, unsigned int numArgs)
 {
     assert(numArgs >= 0 && numArgs <= 3);
+
+    std::cout << "Num args: " << numArgs << std::endl;
+    std::cout << "Tokens Size: " << tokens.size() << std::endl;
 
     if (tokens.size() != numArgs + 1)
         throw CompileException("Wrong number of arguments for opcode '" + tokens[0] + "'");
@@ -126,7 +136,7 @@ void OpParser::HandleOpArgs(opvalue& val, const Tokens& tokens, unsigned int num
 void OpParser::SetReg(const std::string& regval, opvalue& op, unsigned int index)
 {
     assert(regval.size() > 0);
-    assert(index > 0 && index < 3);
+    assert(index > 0 && index <= 3);
 
     CompileException exc("The value '" + regval + "' is not a valid register. Registers are values of 'r0'-'r15'");
 

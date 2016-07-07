@@ -1,5 +1,6 @@
 #include "stringutils.h"
 #include <cstdint>
+#include <sstream>
 
 
 #define _SIZE_LEN_PROXY(MAX_SIZE) std::string( #MAX_SIZE ).size()
@@ -42,5 +43,26 @@ namespace utils
 
         return val;
     }
+
+
+    std::vector<std::string> Split(const std::string& str, char delim, bool blanks)
+    {
+        std::vector<std::string> items;
+        return SplitEx(str, delim, items, blanks);
+    }
+
+    std::vector<std::string>& SplitEx(const std::string& str, char delim, std::vector<std::string>& items, bool blanks)
+    {
+        std::stringstream ss(str);
+        std::string item;
+        while (std::getline(ss, item, delim))
+        {
+            if (!item.empty() || blanks)
+                items.push_back(item);
+        }
+
+        return items;
+    }
+
 }
 

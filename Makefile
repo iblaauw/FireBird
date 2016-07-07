@@ -27,6 +27,13 @@ firebird: $(OBJECTS) $(COMMON_OBJECTS)
 fireegg: $(EGG_OBJECTS) $(COMMON_OBJECTS)
 	g++ $^ -o $@
 
+test: fireegg
+	rm -f test1.fb
+	./fireegg.exe test1.fire -o test1.fb
+
+%.fb: %.fire
+	./fireegg.exe $^ -o $@
+
 $(OUTDIR)/%.o : %.cpp
 	mkdir -p $(@D)
 	g++ $(CPPFLAGS) $(INCLUDES) -c $^ -o $@
