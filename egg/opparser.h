@@ -15,8 +15,9 @@ private:
     static const std::map<std::string, uint8_t> nameToOp;
     static const std::map<uint8_t, unsigned int> opTypeMap;
 
-    std::vector<opvalue> ops;
 public:
+    std::vector<opvalue> ops;
+
     void Parse(const std::string& line);
 private:
     std::string RemoveComments(const std::string& line);
@@ -29,9 +30,3 @@ private:
 
 DECL_EXCEPTION(CompileException);
 
-// class CompileException : public MessageException
-// {
-// public:
-//     CompileException(const char* m) : MessageException(m) {}
-//     CompileException(const std::string& m) : MessageException(m) {}
-// };

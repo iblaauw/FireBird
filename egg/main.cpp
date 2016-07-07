@@ -1,4 +1,5 @@
 #include "parse_args.h"
+#include "filecompiler.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -29,8 +30,6 @@ int main(int argc, char** argv)
 
     char* inname = unmarked[0];
 
-    cout << "Compiling " << inname << " -> " << outname << endl;
-
     ifstream infile;
     infile.open(inname, ifstream::binary);
     if (!infile)
@@ -47,7 +46,11 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    FileCompiler compiler;
+    compiler.Run(infile, inname, outfile, outname);
 
+    infile.close();
+    outfile.close();
 
     return 0;
 }
