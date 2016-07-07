@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exception>
+#include <string>
 
 class MessageException : public std::exception
 {
@@ -11,4 +12,18 @@ public:
     MessageException(std::string message) : message(message) {}
     const char* what() const throw() override { return message.c_str(); }
 };
+
+#define DECL_EXCEPTION(_ExceptionName) \
+class _ExceptionName : public MessageException \
+{ \
+public: \
+    _ExceptionName (const char* m) : MessageException(m) {} \
+    _ExceptionName (const std::string& m) : MessageException(m) {} \
+}
+
+DECL_EXCEPTION(__Death);
+
+#define _DEATH(FILE, LINE) do { throw __Death("At " #FILE ", " #LINE); } while(0)
+
+#define DEATH() _DEATH(__FILE__, __LINE__)
 
