@@ -2,6 +2,7 @@
 #include "opvalue.h"
 #include "memory.h"
 #include "OpWrapper.h"
+#include "processor.h"
 #include <iostream>
 #include <fstream>
 #include <cassert>
@@ -33,6 +34,11 @@ int main(int argc, char** argv)
     // Load file into memory
     memory.LoadFile(inFile);
     inFile.close();
+
+    Processor processor(&memory);
+    processor.Start(0);
+    return 0;
+
 
     OpWrapper wrapper(memory.GetAddress(0));
 

@@ -10,5 +10,6 @@
 #define OP_OR       0x2
 #define OP_XOR      0x3
 #define OP_MOVE     0x4
+#define OP_RETURN   0x1B
 #define OP_SYSCALL  0x1F
 

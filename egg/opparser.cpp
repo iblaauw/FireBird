@@ -25,6 +25,7 @@
     { "XOR"    , OP_XOR     },
     { "MOVE"   , OP_MOVE    },
     { "SYSCALL", OP_SYSCALL },
+    { "RETURN" , OP_RETURN  },
 };
 
 /*static*/ const std::map<uint8_t, unsigned int> OpParser::opTypeMap =
@@ -40,6 +41,7 @@
     { OP_XOR    , 3 },
     { OP_MOVE   , 2 },
     { OP_SYSCALL, 1 },
+    { OP_RETURN,  1 },
 };
 
 void OpParser::Parse(const std::string& line)

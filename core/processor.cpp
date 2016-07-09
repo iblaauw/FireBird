@@ -13,10 +13,7 @@ Processor::Processor(Memory* memory) : _memory(memory)
 void Processor::Start(word address)
 {
     pc = address;
-    while (true)
-    {
-        Execute();
-    }
+    Execute();
 }
 
 OpWrapper Processor::LoadInstruction()
@@ -27,41 +24,48 @@ OpWrapper Processor::LoadInstruction()
 
 void Processor::Execute()
 {
-    OpWrapper wrapper = LoadInstruction();
-    word opcode = wrapper.Opcode();
-    switch (opcode)
+    while(true)
     {
-        case OP_NOOP:
-            break;
-        case OP_ADD:
-        case OP_SUB:
-        case OP_MULT:
-        case OP_DIV:
-        case OP_MOD:
-            DoTripleOp(wrapper);
-            break;
-        case OP_MOVE:
-            DoDoubleOp(wrapper);
-        case OP_SYSCALL:
-            DoSyscall(wrapper);
-            break;
-        default:
-            std::cout << "Warning: Did not recognize opcode "
-                      << std::hex << opcode
-                      << " at address " << pc
-                      << ". Ignoring it." << std::dec
-                      << std::endl;
-            break;
-    }
+        OpWrapper wrapper = LoadInstruction();
+        word opcode = wrapper.Opcode();
+        switch (opcode)
+        {
+            case OP_NOOP:
+                break;
+            case OP_ADD:
+            case OP_SUB:
+            case OP_MULT:
+            case OP_DIV:
+            case OP_MOD:
+                DoTripleOp(wrapper);
+                break;
+            case OP_MOVE:
+                DoDoubleOp(wrapper);
+                break;
+            case OP_SYSCALL:
+                DoSyscall(wrapper);
+                break;
+            case OP_RETURN:
+                std::cout << "Program Finished" << std::endl;
+                return;
+            default:
+                std::cout << "Warning: Did not recognize opcode "
+                          << std::hex << opcode
+                          << " at address " << pc
+                          << ". Ignoring it." << std::dec
+                          << std::endl;
+                break;
+        }
 
-    pc += 4;
+        pc += 4;
+    }
 }
 
 void Processor::DoTripleOp(OpWrapper& wrapper)
 {
     word* dest = regs + wrapper.Slot1();
-    word arg1 = wrapper.Slot2();
-    word arg2 = wrapper.ArgFlag() ? wrapper.Immediate() : wrapper.Reg3();
+    word arg1 = regs[wrapper.Slot2()];
+    word arg2 = wrapper.ArgFlag() ? wrapper.Immediate() : regs[wrapper.Reg3()];
     switch (wrapper.Opcode())
     {
         case OP_ADD:
@@ -87,7 +91,7 @@ void Processor::DoTripleOp(OpWrapper& wrapper)
 void Processor::DoDoubleOp(OpWrapper& op)
 {
     word* dest = regs + op.Slot1();
-    word arg = op.ArgFlag() ? op.Immediate() : op.Slot2();
+    word arg = op.ArgFlag() ? op.Immediate() : regs[op.Slot2()];
     switch (op.Opcode())
     {
         case OP_MOVE:
