@@ -12,6 +12,8 @@
 #define LABEL_CHAR ':'
 #define REG_CHAR 'r'
 
+#define NAME_TO_OP_SLOT(name) { #name, OP_ ## name }
+
 /*static*/ const std::map<std::string, uint8_t> OpParser::nameToOp =
 {
     { "NOOP"   , OP_NOOP    },
@@ -23,7 +25,12 @@
     { "AND"    , OP_AND     },
     { "OR"     , OP_OR      },
     { "XOR"    , OP_XOR     },
+    { "LSHIFT" , OP_LSHIFT  },
+    { "RSHIFT" , OP_RSHIFT  },
     { "MOVE"   , OP_MOVE    },
+    NAME_TO_OP_SLOT( LOAD ),
+    NAME_TO_OP_SLOT( STORE ),
+    NAME_TO_OP_SLOT( BRANCH ),
     { "SYSCALL", OP_SYSCALL },
     { "RETURN" , OP_RETURN  },
 };
@@ -39,9 +46,14 @@
     { OP_AND    , 3 },
     { OP_OR     , 3 },
     { OP_XOR    , 3 },
+    { OP_LSHIFT , 3 },
+    { OP_RSHIFT , 3 },
     { OP_MOVE   , 2 },
+    { OP_LOAD   , 2 },
+    { OP_STORE  , 2 },
+    { OP_BRANCH , 1 },
     { OP_SYSCALL, 1 },
-    { OP_RETURN,  1 },
+    { OP_RETURN , 1 },
 };
 
 void OpParser::Parse(const std::string& line)

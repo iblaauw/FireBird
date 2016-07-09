@@ -19,9 +19,15 @@ public:
     void Start(word address);
 
 private:
-    OpWrapper LoadInstruction();
+    inline OpWrapper LoadInstruction()
+    {
+        byte* data = _memory->GetAddress(pc);
+        return OpWrapper(data);
+    }
+
     void Execute();
-    void DoTripleOp(OpWrapper& wrapper);
-    void DoDoubleOp(OpWrapper& op);
-    void DoSyscall(OpWrapper& op);
+
+    //void DoTripleOp(OpWrapper& wrapper);
+    //void DoDoubleOp(OpWrapper& op);
+    //void DoSyscall(OpWrapper& op);
 };
