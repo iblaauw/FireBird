@@ -3,6 +3,7 @@
 #include "opcodes.h"
 #include "split.h"
 #include "stringutils.h"
+#include "intvals.h"
 #include <cassert>
 #include <cstring>
 #include <string>
@@ -13,6 +14,12 @@
 #define REG_CHAR 'r'
 
 #define NAME_TO_OP_SLOT(name) { #name, OP_ ## name }
+
+#define DEBUG_TRACE \
+do { \
+    std::cout << "TRACE " << __FILE__ << " in " << __func__ << " at line " << __LINE__ << std::endl; \
+} while (false)
+
 
 /*static*/ const std::map<std::string, uint8_t> OpParser::nameToOp =
 {
@@ -56,6 +63,22 @@
     { OP_RETURN , 1 },
 };
 
+static inline bool IsRegister(const std::string& token)
+{
+    if (token.size() == 0)
+        return false;
+
+    return token[0] == REG_CHAR;
+}
+
+static inline bool IsLabel(const std::string& token)
+{
+    if (token.size() == 0)
+        return false;
+
+    return token[0] == LABEL_CHAR;
+}
+
 void OpParser::Parse(const std::string& line)
 {
     std::string pure_line = RemoveComments(line);
@@ -64,16 +87,36 @@ void OpParser::Parse(const std::string& line)
     if (tokens.size() == 0) // Empty line
         return;
 
-    if (tokens[0][0] == LABEL_CHAR)
+    if (IsLabel(tokens[0]))
     {
+        std::cout << "Detected label " << tokens[0] << std::endl;
+
         if (tokens.size() != 1)
             throw CompileException(
-                "Error: a label must be on its own line.\n");
+                "Error: a label must be on its own line.");
 
-        // Actually handle label
+        AddLabel(tokens[0]);
+        return;
     }
 
     ParseOp(tokens);
+}
+
+void OpParser::Finalize()
+{
+    if (labelsNeeded.size() == 0)
+        return;
+
+    auto iter = labelsNeeded.begin();
+    const auto& vec = iter->second;
+    if (vec.size() == 0)
+        return;
+
+    std::string label = iter->first;
+    std::string line = patch::to_string(vec[0]);
+
+    throw CompileException("Error: unknown label '" + label + "', on line " + line);
+
 }
 
 std::string OpParser::RemoveComments(const std::string& line)
@@ -99,8 +142,7 @@ void OpParser::ParseOp(const Tokens& tokens)
     memset(&op, 0, sizeof(opvalue));
     op.op = iter->second;
 
-    std::cout << "iter->first " << iter->first << std::endl;
-    std::cout << "iter->second " << (int)iter->second << std::endl;
+    std::cout << /*"iter->first " << */ iter->first << std::endl;
 
 
     unsigned int numArgs = opTypeMap.at(iter->second);
@@ -109,20 +151,9 @@ void OpParser::ParseOp(const Tokens& tokens)
     ops.push_back(op);
 }
 
-static bool IsRegister(const std::string& token)
-{
-    if (token.size() == 0)
-        return false;
-
-    return token[0] == REG_CHAR;
-}
-
 void OpParser::HandleOpArgs(opvalue& val, const Tokens& tokens, unsigned int numArgs)
 {
     assert(numArgs >= 0 && numArgs <= 3);
-
-    std::cout << "Num args: " << numArgs << std::endl;
-    std::cout << "Tokens Size: " << tokens.size() << std::endl;
 
     if (tokens.size() != numArgs + 1)
         throw CompileException("Wrong number of arguments for opcode '" + tokens[0] + "'");
@@ -138,7 +169,15 @@ void OpParser::HandleOpArgs(opvalue& val, const Tokens& tokens, unsigned int num
         if (isLast && !IsRegister(token))
         {
             val.argFlag = 1;
-            SetImm(token, val);
+
+            if (IsLabel(token))
+            {
+                SetLabelImm(token, val);
+            }
+            else
+            {
+                SetImm(token, val);
+            }
         }
         else
         {
@@ -232,4 +271,58 @@ void OpParser::SetImm(const std::string& immval, opvalue& op)
     op.slot3.imm = static_cast<uint16_t>(val);
 }
 
+static inline std::string GetLabelName(const std::string& label)
+{
+    assert(IsLabel(label));
+    assert(label.size() != 0);
+    // Actually handle label
+    std::string labelName = label.substr(1);
+
+    if (labelName.size() == 0)
+        throw CompileException("Error: Invalid syntax ':'.");
+
+    return labelName;
+}
+
+void OpParser::AddLabel(const std::string& labelToken)
+{
+    std::string label = GetLabelName(labelToken);
+
+    auto iterCheck = labels.find(label);
+    if (iterCheck != labels.end())
+        throw CompileException("The label '" + label + "' has already been defined.");
+
+    int lineNum = ops.size();
+    labels[label] = lineNum;
+
+    auto iter = labelsNeeded.find(label);
+    if (iter == labelsNeeded.end())
+        return;
+
+    uint16_t ulineNum = static_cast<uint16_t>(lineNum);
+    for (int line : iter->second)
+    {
+        opvalue& op = ops[line];
+        op.slot3.imm = ulineNum;
+    }
+
+    labelsNeeded.erase(iter);
+}
+
+void OpParser::SetLabelImm(const std::string& labelToken, opvalue& val)
+{
+    std::string label = GetLabelName(labelToken);
+
+    auto iter = labels.find(label);
+    if (iter == labels.end())
+    {
+        // Label doesn't exist yet, so put it in the store of what labels to replace
+        int lineNum = ops.size();
+        labelsNeeded[label].push_back(lineNum);
+        return;
+    }
+
+    uint16_t labelAddr = static_cast<uint16_t>(iter->second);
+    val.slot3.imm = labelAddr;
+}
 

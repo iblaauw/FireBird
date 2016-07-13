@@ -30,6 +30,19 @@ void FileCompiler::Run(std::ifstream& infile, const std::string& inname,
         return;
     }
 
+    try
+    {
+        parser.Finalize(); // Check for second pass errors
+    }
+    catch (CompileException ex)
+    {
+        std::cout << ex.what() << std::endl;
+        std::cout << "Error occured in file " << inname << std::endl;
+        std::cout << std::endl;
+        std::cout << "Compiling Failed" << std::endl;
+        return;
+    }
+
     size_t size = parser.ops.size() * sizeof(opvalue);
     const char* data = reinterpret_cast<const char*>(parser.ops.data());
 
