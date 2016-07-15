@@ -3,6 +3,7 @@
 #include "message_exception.h"
 #include <cstring>
 #include <iostream>
+#include <cassert>
 
 #define PC_INC_AMOUNT 4
 
@@ -103,9 +104,107 @@ inline void DoMemory(OpWrapper& op, word* regs, Memory* mem)
     }
 }
 
+inline void DoComp(OpWrapper& op, word* regs, bool* compFlag)
+{
+    word* dest = regs + op.Slot1();
+    word arg = op.ArgFlag() ? op.Immediate() : regs[op.Slot2()];
+
+    switch (op.Opcode())
+    {
+        case OP_EQUAL:
+            *compFlag = *dest == arg;
+            break;
+        case OP_GREATER:
+            *compFlag = *dest > arg;
+            break;
+        case OP_LESS:
+            *compFlag = *dest < arg;
+            break;
+        default:
+            DEATH();
+    }
+}
+
+inline void DoZeroComp(OpWrapper& op, word* regs, bool* compFlag)
+{
+    if (op.Opcode() != OP_ISZERO)
+        DEATH();
+
+    word arg = op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
+    *compFlag = arg == 0;
+}
+
 inline word GetBranchLoc(OpWrapper& op, word* regs)
 {
     return op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
+}
+
+void Processor::Push(word val)
+{
+    byte* buffer = _memory->GetAddress(stackPtr);
+    word* slot = reinterpret_cast<word*>(buffer);
+    *slot = val;
+    stackPtr += sizeof(word);
+}
+
+void Processor::Pop(word* popTo)
+{
+    stackPtr -= sizeof(word);
+    byte* buffer = _memory->GetAddress(stackPtr);
+    word* slot = reinterpret_cast<word*>(buffer);
+    *popTo = *slot;
+}
+
+void Processor::PushForCall()
+{
+    Push(framePtr);
+    Push(link);
+}
+
+void Processor::PopForReturn()
+{
+    Pop(&link);
+    Pop(&framePtr);
+}
+
+void Processor::DoStackOp(OpWrapper& op)
+{
+    word* regSlot = regs + op.Slot1();
+    word val = op.ArgFlag() ? op.Immediate() : *regSlot;
+
+    switch (op.Opcode())
+    {
+        case OP_PUSH:
+            Push(val);
+            break;
+        case OP_POP:
+            Pop(regSlot);
+            break;
+        case OP_POPX:
+            stackPtr -= val;
+            break;
+        case OP_CALL:
+            PushForCall(); // Save everything
+            framePtr = stackPtr;
+            pc = val - PC_INC_AMOUNT;
+            break;
+        case OP_RETURN:
+            pc = link - PC_INC_AMOUNT;
+            stackPtr = framePtr;
+            PopForReturn(); // Restore everything
+        default:
+            DEATH();
+    }
+}
+
+void Processor::DoArgOp(OpWrapper& op)
+{
+    assert(op.Opcode() == OP_ARG);
+
+    word* dest = regs + op.Slot1();
+    word val = op.ArgFlag() ? op.Immediate() : regs[op.Slot2()];
+
+    *dest = framePtr + val*4;
 }
 
 void Processor::Execute()
@@ -137,15 +236,37 @@ void Processor::Execute()
             case OP_STORE:
                 DoMemory(wrapper, regs, _memory);
                 break;
+            case OP_EQUAL:
+            case OP_GREATER:
+            case OP_LESS:
+                DoComp(wrapper, regs, &compFlag);
+                break;
+            case OP_ISZERO:
+                DoZeroComp(wrapper, regs, &compFlag);
+                break;
             case OP_BRANCH:
                 pc = 4*GetBranchLoc(wrapper, regs) - PC_INC_AMOUNT;
+                break;
+            case OP_PUSH:
+            case OP_POP:
+            case OP_POPX:
+            case OP_CALL:
+                DoStackOp(wrapper);
+                break;
+            case OP_ARG:
+                DoArgOp(wrapper);
                 break;
             case OP_SYSCALL:
                 DoSyscall(wrapper, regs);
                 break;
             case OP_RETURN:
-                std::cout << "Program Finished" << std::endl;
-                return;
+                if (framePtr == 0)
+                {
+                    std::cout << "Program Finished" << std::endl;
+                    return;
+                }
+                DoStackOp(wrapper);
+                break;
             default:
                 std::cout << "Warning: Did not recognize opcode "
                           << std::hex << opcode

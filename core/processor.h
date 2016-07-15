@@ -11,6 +11,10 @@ private:
 
     word regs[16];
     word pc;
+    word stackPtr;
+    word framePtr;
+    word link;
+    bool compFlag;
 
 public:
     Processor(Memory* memory);
@@ -26,6 +30,14 @@ private:
     }
 
     void Execute();
+
+    void Push(word val);
+    void Pop(word* popTo);
+    void PushForCall();
+    void PopForReturn();
+
+    void DoStackOp(OpWrapper& wrapper);
+    void DoArgOp(OpWrapper& wrapper);
 
     //void DoTripleOp(OpWrapper& wrapper);
     //void DoDoubleOp(OpWrapper& op);
