@@ -36,42 +36,18 @@ int main(int argc, char** argv)
     inFile.close();
 
     Processor processor(&memory);
-    processor.Start(0);
-    return 0;
 
-
-    OpWrapper wrapper(memory.GetAddress(0));
-
-    cout << "OpCode: " << (unsigned int)wrapper.Opcode() << endl;
-    cout << "String: " << wrapper.GetString() << endl;
-    cout << "Hex: " << std::hex << wrapper.GetInt() << std::dec << endl;
-
-
-    byte data[4];
-    data[0] = 0;
-    data[1] = 0;
-    data[2] = 0;
-    data[3] = 0;
-
-    data[0] = 5;
-    data[1] = 0xF0;
-    byte* raw = data;
-    opvalue* op2 = reinterpret_cast<opvalue*>(raw);
-    cout << "op2 op test: " << (int)(op2->op) << endl;
-    cout << "\t" << std::hex << (int)(op2->slot3.imm) << std::dec << endl;
-    cout << "\t" << (int)(op2->slot3.reg) << endl;
-
-    cout << "Beginning asserts..." << endl;
-
-    assert(wrapper.Opcode() == 12);
-    assert(wrapper.OpFlag() == 2);
-    assert(wrapper.ArgFlag() == false);
-    assert(wrapper.Slot1() == 6);
-    assert(wrapper.Slot2() == 3);
-    assert(wrapper.Immediate() == 0x6261);
-    assert(wrapper.Reg3() == 1);
-
-    cout << "Asserts successful!" << endl;
+    try
+    {
+        processor.Start(0);
+    }
+    catch (exception& ex)
+    {
+        cout << "FATAL: an error occurred." << endl;
+        cout << ex.what() << endl;
+        //TODO: figure out how to print backtrace
+        return -1;
+    }
 
     return 0;
 }

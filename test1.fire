@@ -15,7 +15,7 @@ SYSCALL r4 # Print 3
 
 :End
 SYSCALL r0 # Print 15
-RETURN r0
+RETURN
 
 # Done
 # Expected output: 3, 15

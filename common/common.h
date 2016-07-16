@@ -22,4 +22,9 @@ namespace patch
     }
 }
 
+#define DEBUG_TRACE \
+do { \
+    std::cout << "TRACE " << __FILE__ << " in " << __func__ << " at line " << __LINE__ << std::endl; \
+} while (false)
+
 

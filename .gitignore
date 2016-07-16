@@ -2,6 +2,7 @@ build/
 
 *.swp
 *.stackdump
+*.fb
 
 firebird.exe
 fireegg.exe

@@ -1,0 +1,34 @@
+# Testing basics of CALL and RETURN
+
+:main
+MOVE r0 1
+MOVE r1 2
+MOVE r2 3
+MOVE r3 4
+
+PUSH r0
+PUSH r1
+PUSH r2
+PUSH r3
+
+CALL :MY_FUNC
+CALL :MY_FUNC
+CALL :MY_FUNC
+
+POP r0
+SYSCALL r0
+POP r0
+SYSCALL r0
+POP r0
+SYSCALL r0
+POP r0
+SYSCALL r0
+
+RETURN
+
+:MY_FUNC
+SYSCALL 5
+
+RETURN
+
+# expected output: 5 5 5 4 3 2 1

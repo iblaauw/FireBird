@@ -15,12 +15,6 @@
 
 #define NAME_TO_OP_SLOT(name) { #name, OP_ ## name }
 
-#define DEBUG_TRACE \
-do { \
-    std::cout << "TRACE " << __FILE__ << " in " << __func__ << " at line " << __LINE__ << std::endl; \
-} while (false)
-
-
 /*static*/ const std::map<std::string, uint8_t> OpParser::nameToOp =
 {
     { "NOOP"   , OP_NOOP    },
@@ -77,8 +71,20 @@ do { \
     { OP_POPX   , 1 },
     { OP_ARG    , 2 },
     { OP_CALL   , 1 },
-    { OP_RETURN , 1 },
+    { OP_RETURN , 0 },
     { OP_SYSCALL , 1 },
+};
+
+/* static */ const std::map<std::string, unsigned int> OpParser::opAdornmentMap =
+{
+    { "0", 0 },
+    { "1", 1 },
+    { "2", 2 },
+    { "3", 3 },
+
+    { "!", 1 },
+    { "IF", 1 },
+    { "FUNC", 1 },
 };
 
 static inline bool IsRegister(const std::string& token)
@@ -151,14 +157,39 @@ void OpParser::ParseOp(const Tokens& tokens)
 {
     assert(tokens.size() > 0);
 
-    std::string opcode = tokens[0];
+    std::string opcode_name = tokens[0];
+
+    CompileException exc("Error: unknown opcode '" + opcode_name + "'");
+
+    std::vector<std::string> namePieces = patch::split(opcode_name, '_');
+    if (namePieces.size() > 2)
+        throw exc;
+
+    std::string opcode;
+    if (namePieces.size() == 2)
+        opcode = namePieces[0];
+    else
+        opcode = opcode_name;
+
     auto iter = nameToOp.find(opcode);
     if (iter == nameToOp.end())
-        throw CompileException("Error: unknown opcode '" + opcode + "'");
+        throw exc;
 
     opvalue op;
     memset(&op, 0, sizeof(opvalue));
     op.op = iter->second;
+
+    // Handle adornments
+    if (namePieces.size() == 2)
+    {
+        std::string adornment = namePieces[1];
+        auto iter2 = opAdornmentMap.find(adornment);
+        if (iter2 == opAdornmentMap.end())
+            throw exc;
+
+        op.opFlag = iter2->second;
+    }
+
 
     std::cout << /*"iter->first " << */ iter->first << std::endl;
 

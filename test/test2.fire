@@ -1,0 +1,46 @@
+# The equivalent program in C:
+
+# int val = 0;
+# void getNextVal(int count) {
+#     if (count % 2 == 0)
+#         val += 2;
+#     else
+#         val += 1;
+# }
+#
+# void main() {
+#     int count = 0
+#     while (val < 20) {
+#         getNextVal()
+#         printf(count)
+#         count++;
+#     }
+# }
+#
+
+# Main
+:LOOP_START
+LESS_! r0 20
+BRANCH_IF :EXIT
+PUSH r7
+PUSH r7
+CALL :FUNC_GETNEXTVAL
+SYSCALL r0
+POP r7
+POP r7
+BRANCH :LOOP_START
+:EXIT
+RETURN
+
+# Func getNextVal
+:FUNC_GETNEXTVAL
+ARG_FUNC r1 0
+LOAD r1 r1 # Dereference
+MOD r2 r1 2
+ISZERO r2
+BRANCH_IF :_even
+ADD r0 r0 1
+RETURN
+:_even
+ADD r0 r0 2
+RETURN

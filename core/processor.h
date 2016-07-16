@@ -38,6 +38,7 @@ private:
 
     void DoStackOp(OpWrapper& wrapper);
     void DoArgOp(OpWrapper& wrapper);
+    void DoBranchOp(OpWrapper& wrapper);
 
     //void DoTripleOp(OpWrapper& wrapper);
     //void DoDoubleOp(OpWrapper& op);

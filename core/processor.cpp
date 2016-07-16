@@ -1,6 +1,7 @@
 #include "processor.h"
 #include "opcodes.h"
 #include "message_exception.h"
+#include "intvals.h"
 #include <cstring>
 #include <iostream>
 #include <cassert>
@@ -8,15 +9,19 @@
 #define PC_INC_AMOUNT 4
 
 
-Processor::Processor(Memory* memory) : _memory(memory)
+Processor::Processor(Memory* memory) :
+    _memory(memory),
+    pc(0),
+    stackPtr(0),
+    framePtr(0),
+    link(0),
+    compFlag(false)
 {
     memset(regs, 0, sizeof(regs));
-    pc = 0;
 }
 
 void Processor::Start(word address)
 {
-    pc = address;
     Execute();
 }
 
@@ -83,7 +88,7 @@ inline void DoDoubleOp(OpWrapper& op, word* regs)
 inline void DoSyscall(OpWrapper& op, word* regs)
 {
     // For right now, just print something:
-    word val = regs[op.Slot1()];
+    word val = op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
     std::cout << "syscall print: " << val << std::endl;
 }
 
@@ -91,14 +96,18 @@ inline void DoMemory(OpWrapper& op, word* regs, Memory* mem)
 {
     word* dest = regs + op.Slot1();
     word arg = op.ArgFlag() ? op.Immediate() : regs[op.Slot2()];
+
     byte* raw = mem->GetAddress(arg);
     word* memSpot = reinterpret_cast<word*>(raw);
+
     switch (op.Opcode())
     {
         case OP_LOAD:
             *dest = *memSpot;
+            break;
         case OP_STORE:
             *memSpot = *dest;
+            break;
         default:
             DEATH();
     }
@@ -123,6 +132,9 @@ inline void DoComp(OpWrapper& op, word* regs, bool* compFlag)
         default:
             DEATH();
     }
+
+    if (op.OpFlag() == 1)
+        *compFlag = !(*compFlag);
 }
 
 inline void DoZeroComp(OpWrapper& op, word* regs, bool* compFlag)
@@ -132,11 +144,6 @@ inline void DoZeroComp(OpWrapper& op, word* regs, bool* compFlag)
 
     word arg = op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
     *compFlag = arg == 0;
-}
-
-inline word GetBranchLoc(OpWrapper& op, word* regs)
-{
-    return op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
 }
 
 void Processor::Push(word val)
@@ -186,12 +193,15 @@ void Processor::DoStackOp(OpWrapper& op)
         case OP_CALL:
             PushForCall(); // Save everything
             framePtr = stackPtr;
-            pc = val - PC_INC_AMOUNT;
+            link = pc;
+            pc = 4*val - PC_INC_AMOUNT;
             break;
         case OP_RETURN:
-            pc = link - PC_INC_AMOUNT;
+            std::cout << "Returning to: " << link << std::endl;
+            pc = link;
             stackPtr = framePtr;
             PopForReturn(); // Restore everything
+            break;
         default:
             DEATH();
     }
@@ -204,13 +214,30 @@ void Processor::DoArgOp(OpWrapper& op)
     word* dest = regs + op.Slot1();
     word val = op.ArgFlag() ? op.Immediate() : regs[op.Slot2()];
 
-    *dest = framePtr + val*4;
+    std::cout << "Arg offset: " << val << std::endl;
+    std::cout << "Frame pointer: " << framePtr << std::endl;
+
+    if (op.OpFlag() == 1) // Get a function argument address
+        *dest = framePtr - 12 - val*4;
+    else // Get a current function local var address
+        *dest = framePtr + val*4;
+}
+
+void Processor::DoBranchOp(OpWrapper& op)
+{
+    assert(op.Opcode() == OP_BRANCH);
+    word val = op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
+    if (op.OpFlag() == 1 && !compFlag)
+        return;
+
+    pc = 4*val - PC_INC_AMOUNT;
 }
 
 void Processor::Execute()
 {
     while(true)
     {
+        std::cout << "Address: " << pc << std::endl;
         OpWrapper wrapper = LoadInstruction();
         word opcode = wrapper.Opcode();
         switch (opcode)
@@ -245,7 +272,7 @@ void Processor::Execute()
                 DoZeroComp(wrapper, regs, &compFlag);
                 break;
             case OP_BRANCH:
-                pc = 4*GetBranchLoc(wrapper, regs) - PC_INC_AMOUNT;
+                DoBranchOp(wrapper);
                 break;
             case OP_PUSH:
             case OP_POP:

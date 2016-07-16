@@ -1,0 +1,30 @@
+# Test of pushing and popping
+
+MOVE r0 5
+MOVE r1 10
+MOVE r2 15
+MOVE r3 20
+MOVE r4 25
+
+PUSH r0
+PUSH r1
+PUSH r2
+
+POP r0
+SYSCALL r0 # 15
+POP r0
+SYSCALL r0 # 10
+
+PUSH r3
+PUSH r4
+
+POP r0
+SYSCALL r0 # 25
+POP r0
+SYSCALL r0 # 20
+POP r0
+SYSCALL r0 # 5
+
+RETURN
+
+# expected output: 15, 10, 25, 20, 5

@@ -23,7 +23,9 @@ public: \
 
 DECL_EXCEPTION(__Death);
 
-#define _DEATH(FILE, LINE) do { throw __Death("At " #FILE ", " #LINE); } while(0)
+#define _DEATH(FILE_, LINE) do { throw __Death("Fatal error at " #FILE_ ", line " #LINE); } while(0)
 
-#define DEATH() _DEATH(__FILE__, __LINE__)
+#define _DEATH_PROXY(FILE_, LINE) _DEATH(FILE_, LINE)
+
+#define DEATH() _DEATH_PROXY(__FILE__, __LINE__)
 
