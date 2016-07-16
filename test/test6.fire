@@ -1,0 +1,14 @@
+# testing a very stupid bug that occurred
+
+SYSCALL 1
+
+CALL :MY_FUNC
+
+RETURN
+
+:MY_FUNC
+ARG_FUNC r0 0
+SYSCALL 2
+RETURN
+
+# Expected output: 1 2

@@ -8,12 +8,14 @@
 
 #define PC_INC_AMOUNT 4
 
+#define STACK_START 1000
+
 
 Processor::Processor(Memory* memory) :
     _memory(memory),
     pc(0),
-    stackPtr(0),
-    framePtr(0),
+    stackPtr(STACK_START),
+    framePtr(STACK_START),
     link(0),
     compFlag(false)
 {
@@ -197,7 +199,6 @@ void Processor::DoStackOp(OpWrapper& op)
             pc = 4*val - PC_INC_AMOUNT;
             break;
         case OP_RETURN:
-            std::cout << "Returning to: " << link << std::endl;
             pc = link;
             stackPtr = framePtr;
             PopForReturn(); // Restore everything
@@ -213,9 +214,6 @@ void Processor::DoArgOp(OpWrapper& op)
 
     word* dest = regs + op.Slot1();
     word val = op.ArgFlag() ? op.Immediate() : regs[op.Slot2()];
-
-    std::cout << "Arg offset: " << val << std::endl;
-    std::cout << "Frame pointer: " << framePtr << std::endl;
 
     if (op.OpFlag() == 1) // Get a function argument address
         *dest = framePtr - 12 - val*4;
@@ -287,7 +285,7 @@ void Processor::Execute()
                 DoSyscall(wrapper, regs);
                 break;
             case OP_RETURN:
-                if (framePtr == 0)
+                if (framePtr == STACK_START)
                 {
                     std::cout << "Program Finished" << std::endl;
                     return;
