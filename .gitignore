@@ -3,6 +3,8 @@ build/
 *.swp
 *.stackdump
 *.fb
+*.a
+*.o
 
 firebird.exe
 fireegg.exe
