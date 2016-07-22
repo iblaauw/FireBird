@@ -44,4 +44,34 @@ StringView operator"" _sv(const char* str)
     return StringView::FromLiteral(str);
 }
 
+#include <functional>
+
+// Hash function:
+namespace std
+{
+    template<>
+    struct hash<StringView>
+    {
+        typedef StringView argument_type;
+        typedef std::size_t result_type;
+        result_type operator()(const argument_type& arg) const
+        {
+            hash<string> stringHash;
+            return stringHash((string)arg);
+        }
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
