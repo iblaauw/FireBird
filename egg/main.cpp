@@ -30,27 +30,11 @@ int main(int argc, char** argv)
 
     char* inname = unmarked[0];
 
-    ifstream infile;
-    infile.open(inname, ifstream::binary);
-    if (!infile)
-    {
-        cout << "Error: Couldn't open file " << inname <<  endl;
+    FileCompiler compiler(inname, outname);
+    bool success = compiler.Run();
+
+    if (!success)
         return -1;
-    }
-
-    ofstream outfile;
-    outfile.open(outname, ofstream::trunc | ofstream::binary);
-    if (!outfile)
-    {
-        cout << "Error: Couldn't open or create file " << outname <<  endl;
-        return -1;
-    }
-
-    FileCompiler compiler;
-    compiler.Run(infile, inname, outfile, outname);
-
-    infile.close();
-    outfile.close();
 
     return 0;
 }
