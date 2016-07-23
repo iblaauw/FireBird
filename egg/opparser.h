@@ -12,10 +12,6 @@ class OpParser
 private:
     typedef std::vector<std::string> Tokens;
 
-    static const std::map<std::string, uint8_t> nameToOp;
-    static const std::map<uint8_t, unsigned int> opTypeMap;
-    static const std::map<std::string, unsigned int> opAdornmentMap;
-
     std::map<std::string, int> labels;
     std::map<std::string, std::vector<int>> labelsNeeded;
 public:

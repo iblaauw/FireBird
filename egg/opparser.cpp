@@ -4,6 +4,7 @@
 #include "split.h"
 #include "stringutils.h"
 #include "intvals.h"
+#include "op_attributes.h"
 #include <cassert>
 #include <cstring>
 #include <string>
@@ -12,80 +13,6 @@
 #define COMMENT_CHAR '#'
 #define LABEL_CHAR ':'
 #define REG_CHAR 'r'
-
-#define NAME_TO_OP_SLOT(name) { #name, OP_ ## name }
-
-/*static*/ const std::map<std::string, uint8_t> OpParser::nameToOp =
-{
-    { "NOOP"   , OP_NOOP    },
-    { "ADD"    , OP_ADD     },
-    { "SUB"    , OP_SUB     },
-    { "MULT"   , OP_MULT    },
-    { "DIV"    , OP_DIV     },
-    { "MOD"    , OP_MOD     },
-    { "AND"    , OP_AND     },
-    { "OR"     , OP_OR      },
-    { "XOR"    , OP_XOR     },
-    { "LSHIFT" , OP_LSHIFT  },
-    { "RSHIFT" , OP_RSHIFT  },
-    { "MOVE"   , OP_MOVE    },
-    NAME_TO_OP_SLOT( LOAD    ),
-    NAME_TO_OP_SLOT( STORE   ),
-    NAME_TO_OP_SLOT( EQUAL   ),
-    NAME_TO_OP_SLOT( GREATER ),
-    NAME_TO_OP_SLOT( LESS    ),
-    NAME_TO_OP_SLOT( ISZERO  ),
-    NAME_TO_OP_SLOT( BRANCH  ),
-    NAME_TO_OP_SLOT( PUSH    ),
-    NAME_TO_OP_SLOT( POP     ),
-    NAME_TO_OP_SLOT( POPX    ),
-    NAME_TO_OP_SLOT( ARG     ),
-    NAME_TO_OP_SLOT( CALL    ),
-    NAME_TO_OP_SLOT( RETURN  ),
-    { "SYSCALL", OP_SYSCALL },
-};
-
-/*static*/ const std::map<uint8_t, unsigned int> OpParser::opTypeMap =
-{
-    { OP_NOOP   , 0 },
-    { OP_ADD    , 3 },
-    { OP_SUB    , 3 },
-    { OP_MULT   , 3 },
-    { OP_DIV    , 3 },
-    { OP_MOD    , 3 },
-    { OP_AND    , 3 },
-    { OP_OR     , 3 },
-    { OP_XOR    , 3 },
-    { OP_LSHIFT , 3 },
-    { OP_RSHIFT , 3 },
-    { OP_MOVE   , 2 },
-    { OP_LOAD   , 2 },
-    { OP_STORE  , 2 },
-    { OP_EQUAL  , 2 },
-    { OP_GREATER, 2 },
-    { OP_LESS   , 2 },
-    { OP_ISZERO , 1 },
-    { OP_BRANCH , 1 },
-    { OP_PUSH   , 1 },
-    { OP_POP    , 1 },
-    { OP_POPX   , 1 },
-    { OP_ARG    , 2 },
-    { OP_CALL   , 1 },
-    { OP_RETURN , 0 },
-    { OP_SYSCALL , 1 },
-};
-
-/* static */ const std::map<std::string, unsigned int> OpParser::opAdornmentMap =
-{
-    { "0", 0 },
-    { "1", 1 },
-    { "2", 2 },
-    { "3", 3 },
-
-    { "!", 1 },
-    { "IF", 1 },
-    { "FUNC", 1 },
-};
 
 static inline bool IsRegister(const std::string& token)
 {
@@ -159,42 +86,22 @@ void OpParser::ParseOp(const Tokens& tokens)
 
     std::string opcode_name = tokens[0];
 
-    CompileException exc("Error: unknown opcode '" + opcode_name + "'");
+    uint8_t opcode;
+    uint8_t opflag;
+    uint8_t numArgs;
+    bool success = OpAttributes::TryGetAttributes(
+        opcode_name, &opcode, &opflag, &numArgs);
 
-    std::vector<std::string> namePieces = patch::split(opcode_name, '_');
-    if (namePieces.size() > 2)
-        throw exc;
-
-    std::string opcode;
-    if (namePieces.size() == 2)
-        opcode = namePieces[0];
-    else
-        opcode = opcode_name;
-
-    auto iter = nameToOp.find(opcode);
-    if (iter == nameToOp.end())
-        throw exc;
+    if (!success)
+        throw CompileException("Error: unknown opcode '" + opcode_name + "'");
 
     opvalue op;
     memset(&op, 0, sizeof(opvalue));
-    op.op = iter->second;
+    op.op = opcode;
+    op.opFlag = opflag;
 
-    // Handle adornments
-    if (namePieces.size() == 2)
-    {
-        std::string adornment = namePieces[1];
-        auto iter2 = opAdornmentMap.find(adornment);
-        if (iter2 == opAdornmentMap.end())
-            throw exc;
+    std::cout << opcode_name << std::endl;
 
-        op.opFlag = iter2->second;
-    }
-
-
-    std::cout << /*"iter->first " << */ iter->first << std::endl;
-
-
-    unsigned int numArgs = opTypeMap.at(iter->second);
     HandleOpArgs(op, tokens, numArgs);
 
     ops.push_back(op);
