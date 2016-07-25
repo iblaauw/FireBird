@@ -25,4 +25,4 @@ SYSCALL r0
 
 RETURN
 
-# expected output: 1 2 3 4
+# expected output: 1012 1008 1004 1000

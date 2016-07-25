@@ -27,17 +27,11 @@ void Processor::Start(word address)
     Execute();
 }
 
-#define DO_SIMPLE_TRIPLE(opcode, operation) case opcode: *dest = arg1 operation arg2; break
-
-inline void DoTripleOp(OpWrapper& wrapper, word* regs)
+template <class Type>
+inline bool ArithmeticOp(uint8_t opcode, Type* dest, Type arg1, Type arg2)
 {
-    word* dest = regs + wrapper.Slot1();
-    word arg1 = regs[wrapper.Slot2()];
-    word arg2 = wrapper.ArgFlag() ? wrapper.Immediate() : regs[wrapper.Reg3()];
-    switch (wrapper.Opcode())
+    switch (opcode)
     {
-        // DO_SIMPLE_TRIPLE(OP_ADD, +);
-
         case OP_ADD:
             *dest = arg1 + arg2;
             break;
@@ -50,6 +44,17 @@ inline void DoTripleOp(OpWrapper& wrapper, word* regs)
         case OP_DIV:
             *dest = arg1 / arg2;
             break;
+        default:
+            return false;
+    }
+    return true;
+}
+
+template <class Type>
+inline bool BinaryOp(uint8_t opcode, Type* dest, Type arg1, Type arg2)
+{
+    switch (opcode)
+    {
         case OP_MOD:
             *dest = arg1 % arg2;
             break;
@@ -68,8 +73,52 @@ inline void DoTripleOp(OpWrapper& wrapper, word* regs)
         case OP_RSHIFT:
             *dest = arg1 >> arg2;
             break;
-        default: // Should never reach
-            throw std::string("Unreachable");
+        default:
+            return false;
+    }
+
+    return true;
+}
+
+#define DO_SIMPLE_TRIPLE(opcode, operation) case opcode: *dest = arg1 operation arg2; break
+
+inline void DoTripleOp(OpWrapper& wrapper, word* regs)
+{
+    word* dest = regs + wrapper.Slot1();
+    word arg1 = regs[wrapper.Slot2()];
+    word arg2 = wrapper.ArgFlag() ? wrapper.Immediate() : regs[wrapper.Reg3()];
+
+    bool success = ArithmeticOp(wrapper.Opcode(), dest, arg1, arg2);
+    if (success)
+        return;
+
+    // else it was a binary op
+    success = BinaryOp(wrapper.Opcode(), dest, arg1, arg2);
+
+    if (!success)
+    {
+        std::cout << "ERROR: unknown arithmetic opcode '" << wrapper.Opcode() << "'. Ignoring it." << std::endl;
+    }
+}
+
+inline void DoTripleFloatOp(OpWrapper& op, word* regs)
+{
+    static_assert(sizeof(float) == sizeof(word), "Invalid size mismatch!");
+    assert(op.OpFlag() == 1);
+
+    word* dest_w = regs + op.Slot1();
+    word arg1_w = regs[op.Slot2()];
+    word arg2_w = op.ArgFlag() ? op.Immediate() : regs[op.Reg3()];
+
+    float* dest = reinterpret_cast<float*>(dest_w);
+    float arg1 = *(reinterpret_cast<float*>( &arg1_w ));
+    float arg2 = *(reinterpret_cast<float*>( &arg2_w ));
+
+    // Floating point only does arithmetic ops, not binary ones
+    bool success = ArithmeticOp(op.Opcode(), dest, arg1, arg2);
+    if (!success)
+    {
+        std::cout << "ERROR: unknown floating-point arithmetic opcode '" << op.Opcode() << "'. Ignoring it." << std::endl;
     }
 }
 
@@ -252,7 +301,10 @@ void Processor::Execute()
             case OP_XOR:
             case OP_LSHIFT:
             case OP_RSHIFT:
-                DoTripleOp(wrapper, regs);
+                if (wrapper.OpFlag() == 1)
+                    DoTripleFloatOp(wrapper, regs);
+                else
+                    DoTripleOp(wrapper, regs);
                 break;
             case OP_MOVE:
                 DoDoubleOp(wrapper, regs);
