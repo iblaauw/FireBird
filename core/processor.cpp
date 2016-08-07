@@ -2,6 +2,7 @@
 #include "opcodes.h"
 #include "message_exception.h"
 #include "intvals.h"
+#include "testframework.h"
 #include <cstring>
 #include <iostream>
 #include <cassert>
@@ -141,6 +142,10 @@ inline void DoSyscall(OpWrapper& op, word* regs)
     // For right now, just print something:
     word val = op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
     std::cout << "syscall print: " << val << std::endl;
+
+    auto testing = TestFramework::GetInstance();
+    if (testing)
+        testing->LogOutput(patch::to_string(val));
 }
 
 inline void DoMemory(OpWrapper& op, word* regs, Memory* mem)

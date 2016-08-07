@@ -7,6 +7,10 @@
 
 class ParseArgs;
 
+// ParseSpec string format:
+// A single letter represents the switch
+// A '+' means it takes an argument
+// A '?' means it is optional
 class ParseSpec
 {
 private:
