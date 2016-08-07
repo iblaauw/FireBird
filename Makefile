@@ -31,8 +31,8 @@ test: fireegg
 	rm -f test1.fb
 	./fireegg.exe test1.fire -o test1.fb
 
-test%: test/test%.fb firebird
-	./firebird $<
+test%: test/test%.fb firebird test/test%.ans
+	./firebird $< -t test/test$*.ans
 
 %.fb: %.fire
 	./fireegg.exe $^ -o $@
