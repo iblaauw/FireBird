@@ -53,6 +53,13 @@
     SLOT( ISZERO_NOT,  ISZERO,   1,      1 ),
     SLOT( ISNOTZERO,   ISZERO,   1,      2 ),
     SLOT( BRANCH_IF,   BRANCH,   1,      1 ),
+
+// FLoat ops
+    SLOT( ADD_F,       ADD,      1,      3 ),
+    SLOT( SUB_F,       SUB,      1,      3 ),
+    SLOT( MULT_F,      MULT,     1,      3 ),
+    SLOT( DIV_F,       DIV,      1,      3 ),
+    SLOT( SYSCALL_F,   SYSCALL,  1,      1 ),
 };
 
 /* static */ bool OpAttributes::TryGetAttributes(

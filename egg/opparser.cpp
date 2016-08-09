@@ -30,6 +30,11 @@ static inline bool IsLabel(const std::string& token)
     return token[0] == LABEL_CHAR;
 }
 
+static inline bool IsConst(const std::string& token)
+{
+    return token == "const";
+}
+
 void OpParser::Parse(const std::string& line)
 {
     std::string pure_line = RemoveComments(line);
@@ -47,6 +52,19 @@ void OpParser::Parse(const std::string& line)
                 "Error: a label must be on its own line.");
 
         AddLabel(tokens[0]);
+        return;
+    }
+
+    if (IsConst(tokens[0]))
+    {
+        if (tokens.size() != 2)
+            throw CompileException("Error: const expressions has wrong number of arguments");
+
+        auto& cToken = tokens[1];
+        std::cout << "Detected const " << cToken << std::endl;
+
+        ParseConst(cToken);
+
         return;
     }
 
@@ -106,6 +124,27 @@ void OpParser::ParseOp(const Tokens& tokens)
 
     ops.push_back(op);
 }
+
+void OpParser::ParseConst(const std::string& val)
+{
+    assert(val.size() > 0);
+
+    uint32_t ival;
+    try
+    {
+        ival = utils::ParseUnsignedInt(val);
+    }
+    catch (...)
+    {
+        throw CompileException("Error: invalid constant");
+    }
+
+    static_assert(sizeof(uint32_t) == sizeof(opvalue), "opvalue is the wrong size");
+
+    opvalue* fakeop = reinterpret_cast<opvalue*>(&ival);
+    ops.push_back(*fakeop);
+}
+
 
 void OpParser::HandleOpArgs(opvalue& val, const Tokens& tokens, unsigned int numArgs)
 {

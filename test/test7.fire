@@ -1,0 +1,18 @@
+
+
+MOVE r0 :DATA1
+MULT r0 r0 4
+LOAD r0 r0
+MOVE r1 :DATA2
+MULT r1 r1 4
+LOAD r1 r1
+
+DIV_F r2 r1 r0
+SYSCALL_F r2
+RETURN
+
+:DATA1
+const 1073741824 # Float for 2
+:DATA2
+const 1077936128 # Float for 3
+

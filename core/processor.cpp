@@ -141,11 +141,22 @@ inline void DoSyscall(OpWrapper& op, word* regs)
 {
     // For right now, just print something:
     word val = op.ArgFlag() ? op.Immediate() : regs[op.Slot1()];
-    std::cout << "syscall print: " << val << std::endl;
+    std::string toPrint;
+    if (op.OpFlag() == 0)
+    {
+        toPrint = patch::to_string(val);
+    }
+    else
+    {
+        float x = *(reinterpret_cast<float*>(&val));
+        toPrint = patch::to_string(x);
+    }
+
+    std::cout << "syscall print: " << toPrint << std::endl;
 
     auto testing = TestFramework::GetInstance();
     if (testing)
-        testing->LogOutput(patch::to_string(val));
+        testing->LogOutput(toPrint);
 }
 
 inline void DoMemory(OpWrapper& op, word* regs, Memory* mem)
