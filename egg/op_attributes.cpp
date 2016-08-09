@@ -53,6 +53,7 @@
     SLOT( ISZERO_NOT,  ISZERO,   1,      1 ),
     SLOT( ISNOTZERO,   ISZERO,   1,      2 ),
     SLOT( BRANCH_IF,   BRANCH,   1,      1 ),
+    SLOT( MOVE_TOP,    MOVE,     1,      2 ),
 
 // FLoat ops
     SLOT( ADD_F,       ADD,      1,      3 ),

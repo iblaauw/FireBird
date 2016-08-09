@@ -130,7 +130,15 @@ inline void DoDoubleOp(OpWrapper& op, word* regs)
     switch (op.Opcode())
     {
         case OP_MOVE:
-            *dest = arg;
+            if (!op.OpFlag())
+            {
+                *dest = arg;
+            }
+            else
+            {
+                *dest &= 0x0000FFFF;
+                *dest |= arg << 16;
+            }
             break;
         default: // Should never reach
             throw std::string("Unreachable");
