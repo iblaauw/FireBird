@@ -146,14 +146,11 @@ namespace utils
         size_t numBits = sizeof(T) * 8;
         T maxval = (1 << (numBits - 4));
 
-        std::cout << "MAXVAL " << maxval << std::endl;
-        std::cout << "NUMBITS " << numBits << std::endl;
-
         for (size_t i = 2; i < str.size(); i++)
         {
             cache = val;
 
-            if (val >= maxval) // (1 << 12)
+            if (val >= maxval)
                 throw StringParseException("Out of Range");
 
             uint8_t cval = HexCharValue(str[i]);
