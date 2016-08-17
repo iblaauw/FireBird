@@ -1,0 +1,14 @@
+# Testing the compiler being able to handle hex values
+
+MOVE r0 0xFF
+SYSCALL r0
+MOVE r1 :DATA
+MULT r1 r1 4
+LOAD r1 r1
+SYSCALL_F r1
+MOVE r2 0xabcd
+SYSCALL r2
+RETURN
+
+:DATA
+const 0x48000000

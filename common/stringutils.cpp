@@ -85,7 +85,7 @@ namespace utils
     uint32_t ParseUint32(const std::string& str)
     {
         size_t maxlen = SIZE_LEN(UINT32_MAX);
-        return ParseUIntType<uint16_t>(str, maxlen);
+        return ParseUIntType<uint32_t>(str, maxlen);
     }
 
     uint16_t ParseUint16(const std::string& str)
@@ -142,17 +142,27 @@ namespace utils
 
         T val = 0;
         T cache = 0;
+
+        size_t numBits = sizeof(T) * 8;
+        T maxval = (1 << (numBits - 4));
+
+        std::cout << "MAXVAL " << maxval << std::endl;
+        std::cout << "NUMBITS " << numBits << std::endl;
+
         for (size_t i = 2; i < str.size(); i++)
         {
             cache = val;
+
+            if (val >= maxval) // (1 << 12)
+                throw StringParseException("Out of Range");
 
             uint8_t cval = HexCharValue(str[i]);
 
             val *= 16;
             val += cval;
 
-            if (val < cache)
-                throw StringParseException("Out of Range");
+//            if (val < cache)
+//                throw StringParseException("Out of Range");
         }
 
         return val;
