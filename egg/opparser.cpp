@@ -14,6 +14,7 @@
 #define LABEL_CHAR ':'
 #define REG_CHAR 'r'
 
+
 static inline bool IsRegister(const std::string& token)
 {
     if (token.size() == 0)
@@ -34,6 +35,48 @@ static inline bool IsConst(const std::string& token)
 {
     return token == "const";
 }
+
+static inline bool IsHexVal(const std::string& token)
+{
+    return token.size() > 2 && token[0] == '0' && token[1] == 'x';
+}
+
+static inline uint16_t GetShortValue(const std::string& str)
+{
+    try
+    {
+        if (utils::IsHexStr(str))
+        {
+            return utils::ParseHexUint16(str);
+        }
+
+        return utils::ParseUint16(str);
+    }
+    catch (utils::StringParseException e)
+    {
+        std::string message = "Invalid constant '" + str + "'. Reason: " + e.what();
+        throw CompileException(message);
+    }
+}
+
+static inline uint32_t GetFullValue(const std::string& str)
+{
+    try
+    {
+        if (utils::IsHexStr(str))
+        {
+            return utils::ParseHexUint32(str);
+        }
+
+        return utils::ParseUint32(str);
+    }
+    catch (utils::StringParseException e)
+    {
+        std::string message = "Invalid constant '" + str + "'. Reason: " + e.what();
+        throw CompileException(message);
+    }
+}
+
 
 void OpParser::Parse(const std::string& line)
 {
@@ -129,15 +172,15 @@ void OpParser::ParseConst(const std::string& val)
 {
     assert(val.size() > 0);
 
-    uint32_t ival;
-    try
-    {
-        ival = utils::ParseUnsignedInt(val);
-    }
-    catch (...)
-    {
-        throw CompileException("Error: invalid constant");
-    }
+    uint32_t ival = GetFullValue(val);
+//    try
+//    {
+//        ival = utils::ParseUnsignedInt(val);
+//    }
+//    catch (...)
+//    {
+//        throw CompileException("Error: invalid constant");
+//    }
 
     static_assert(sizeof(uint32_t) == sizeof(opvalue), "opvalue is the wrong size");
 
@@ -240,10 +283,10 @@ void OpParser::SetImm(const std::string& immval, opvalue& op)
 
     CompileException exc("The value '" + immval + "' is not a valid immediate value.");
 
-    uint32_t val;
+    uint16_t val;
     try
     {
-        val = utils::ParseUnsignedInt(immval);
+        val = GetShortValue(immval);//utils::ParseUnsignedInt(immval);
         // base 0 = auto detect dec, hex, octal
         //val = std::stoi(immval, &val, 0);
     }
