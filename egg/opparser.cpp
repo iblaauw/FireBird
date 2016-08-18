@@ -31,14 +31,21 @@ static inline bool IsLabel(const std::string& token)
     return token[0] == LABEL_CHAR;
 }
 
-static inline bool IsConst(const std::string& token)
+using TokenList = std::vector<std::string>;
+
+static inline bool IsConst(const TokenList& tokens)
 {
-    return token == "const";
+    return tokens.size() >= 2 && tokens[0] == "const";
 }
 
-static inline bool IsHexVal(const std::string& token)
+static inline bool IsNormalConst(const TokenList& tokens)
 {
-    return token.size() > 2 && token[0] == '0' && token[1] == 'x';
+    return IsConst(tokens) && tokens.size() == 2;
+}
+
+static inline bool IsFloatConst(const TokenList& tokens)
+{
+    return IsConst(tokens) && tokens.size() == 3 && tokens[1] == "float";
 }
 
 static inline uint16_t GetShortValue(const std::string& str)
@@ -98,17 +105,23 @@ void OpParser::Parse(const std::string& line)
         return;
     }
 
-    if (IsConst(tokens[0]))
+    if (IsConst(tokens))
     {
-        if (tokens.size() != 2)
-            throw CompileException("Error: const expressions has wrong number of arguments");
+        if (IsNormalConst(tokens))
+        {
+            auto& cToken = tokens[1];
+            ParseConst(cToken);
+            return;
+        }
 
-        auto& cToken = tokens[1];
-        std::cout << "Detected const " << cToken << std::endl;
+        if (IsFloatConst(tokens))
+        {
+            auto& cToken = tokens[2];
+            ParseFloatConst(cToken);
+            return;
+        }
 
-        ParseConst(cToken);
-
-        return;
+        throw CompileException("Error: Invalid const expression");
     }
 
     ParseOp(tokens);
@@ -185,6 +198,22 @@ void OpParser::ParseConst(const std::string& val)
     static_assert(sizeof(uint32_t) == sizeof(opvalue), "opvalue is the wrong size");
 
     opvalue* fakeop = reinterpret_cast<opvalue*>(&ival);
+    ops.push_back(*fakeop);
+}
+
+void OpParser::ParseFloatConst(const std::string& val)
+{
+    assert(val.size() > 0);
+
+    float fval;
+    bool success = utils::TryParseFloat(val, &fval);
+
+    if (!success)
+        throw CompileException("Error: invalid float value '" + val + "'");
+
+    static_assert(sizeof(float) == sizeof(opvalue), "opvalue is the wrong size");
+
+    opvalue* fakeop = reinterpret_cast<opvalue*>(&fval);
     ops.push_back(*fakeop);
 }
 

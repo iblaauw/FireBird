@@ -23,6 +23,7 @@ private:
     std::string RemoveComments(const std::string& line);
     void ParseOp(const Tokens& tokens);
     void ParseConst(const std::string& val);
+    void ParseFloatConst(const std::string& val);
     void HandleOpArgs(opvalue& val, const Tokens& tokens, unsigned int numArgs);
     void SetReg(const std::string& regval, opvalue& op, unsigned int index);
     void SetImm(const std::string& regval, opvalue& op);

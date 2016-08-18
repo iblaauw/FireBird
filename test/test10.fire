@@ -1,0 +1,18 @@
+
+
+MOVE r0 :DATA
+MULT r0 r0 4
+LOAD r0 r0
+SYSCALL_F r0
+
+MOVE r1 :DATA2
+MULT r1 r1 4
+LOAD r1 r1
+SYSCALL r1
+
+RETURN
+
+:DATA
+const float 1.145
+:DATA2
+const float 2
