@@ -141,15 +141,11 @@ namespace utils
             throw StringParseException("Invalid Hex String");
 
         T val = 0;
-        T cache = 0;
-
         size_t numBits = sizeof(T) * 8;
         T maxval = (1 << (numBits - 4));
 
         for (size_t i = 2; i < str.size(); i++)
         {
-            cache = val;
-
             if (val >= maxval)
                 throw StringParseException("Out of Range");
 
@@ -157,9 +153,6 @@ namespace utils
 
             val *= 16;
             val += cval;
-
-//            if (val < cache)
-//                throw StringParseException("Out of Range");
         }
 
         return val;
@@ -209,10 +202,6 @@ namespace utils
         float val = strtof(str.c_str(), &endptr);
 
         const char* correctEnd = str.c_str() + str.size();
-
-        std::cout << "correct: " << (void*)correctEnd << std::endl;
-        std::cout << "produced: " << (void*)endptr << std::endl;
-
 
         if (endptr != correctEnd)
             return false;

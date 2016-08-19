@@ -386,7 +386,8 @@ void OpParser::SetLabelImm(const std::string& labelToken, opvalue& val)
     {
         // Label doesn't exist yet, so put it in the store of what labels to replace
         int lineNum = ops.size();
-        labelsNeeded[label].push_back(lineNum);
+        LabelMissingCache& cache = isDataLabel ? dataLabelsNeeded : labelsNeeded;
+        cache[label].push_back(lineNum);
         return;
     }
 

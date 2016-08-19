@@ -1,0 +1,18 @@
+
+LOAD r0 :!Data
+SYSCALL r0
+LOAD r1 :!Data2
+SYSCALL_F r1
+BRANCH :Skipped
+
+:Data
+const 1234
+:Data2
+const float 1.56
+:Data3
+const 0x20
+
+:Skipped
+LOAD r2 :!Data3
+SYSCALL r2
+RETURN
