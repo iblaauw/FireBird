@@ -12,6 +12,7 @@
 
 #define COMMENT_CHAR '#'
 #define LABEL_CHAR ':'
+#define DATA_LABEL_CHAR '!'
 #define REG_CHAR 'r'
 
 
@@ -29,6 +30,14 @@ static inline bool IsLabel(const std::string& token)
         return false;
 
     return token[0] == LABEL_CHAR;
+}
+
+static inline bool IsDataLabel(const std::string& token)
+{
+    if (token.size() < 2)
+        return false;
+
+    return IsLabel(token) && token[1] == DATA_LABEL_CHAR;
 }
 
 using TokenList = std::vector<std::string>;
@@ -127,21 +136,11 @@ void OpParser::Parse(const std::string& line)
     ParseOp(tokens);
 }
 
+
 void OpParser::Finalize()
 {
-    if (labelsNeeded.size() == 0)
-        return;
-
-    auto iter = labelsNeeded.begin();
-    const auto& vec = iter->second;
-    if (vec.size() == 0)
-        return;
-
-    std::string label = iter->first;
-    std::string line = patch::to_string(vec[0]);
-
-    throw CompileException("Error: unknown label '" + label + "', on line " + line);
-
+    EnsureCacheEmpty(labelsNeeded);
+    EnsureCacheEmpty(dataLabelsNeeded);
 }
 
 std::string OpParser::RemoveComments(const std::string& line)
@@ -343,16 +342,26 @@ static inline std::string GetLabelName(const std::string& label)
     assert(IsLabel(label));
     assert(label.size() != 0);
     // Actually handle label
-    std::string labelName = label.substr(1);
+    int subOffset = IsDataLabel(label) ? 2 : 1;
+    std::string labelName = label.substr(subOffset);
 
     if (labelName.size() == 0)
-        throw CompileException("Error: Invalid syntax ':'.");
+        throw CompileException("Error: Expected a label name.");
 
     return labelName;
 }
 
+static void DoSetLabelImm(opvalue& val, uint16_t labelAddr, bool isDataLabel)
+{
+    uint16_t valToSet = isDataLabel ? labelAddr*4 : labelAddr;
+    val.slot3.imm = valToSet;
+}
+
 void OpParser::AddLabel(const std::string& labelToken)
 {
+    if (IsDataLabel(labelToken))
+        throw CompileException("Invalid label syntax.");
+
     std::string label = GetLabelName(labelToken);
 
     auto iterCheck = labels.find(label);
@@ -362,22 +371,14 @@ void OpParser::AddLabel(const std::string& labelToken)
     int lineNum = ops.size();
     labels[label] = lineNum;
 
-    auto iter = labelsNeeded.find(label);
-    if (iter == labelsNeeded.end())
-        return;
-
     uint16_t ulineNum = static_cast<uint16_t>(lineNum);
-    for (int line : iter->second)
-    {
-        opvalue& op = ops[line];
-        op.slot3.imm = ulineNum;
-    }
-
-    labelsNeeded.erase(iter);
+    BackAddLabel(label, labelsNeeded, ulineNum, false);
+    BackAddLabel(label, dataLabelsNeeded, ulineNum, true);
 }
 
 void OpParser::SetLabelImm(const std::string& labelToken, opvalue& val)
 {
+    bool isDataLabel = IsDataLabel(labelToken);
     std::string label = GetLabelName(labelToken);
 
     auto iter = labels.find(label);
@@ -390,6 +391,39 @@ void OpParser::SetLabelImm(const std::string& labelToken, opvalue& val)
     }
 
     uint16_t labelAddr = static_cast<uint16_t>(iter->second);
-    val.slot3.imm = labelAddr;
+    DoSetLabelImm(val, labelAddr, isDataLabel);
 }
+
+void OpParser::BackAddLabel(const std::string& label, LabelMissingCache& cache, uint16_t address, bool isDataLabel)
+{
+    auto iter = cache.find(label);
+    if (iter == cache.end())
+        return;
+
+    for (int line : iter->second)
+    {
+        opvalue& op = ops[line];
+        DoSetLabelImm(op, address, isDataLabel);
+    }
+
+    cache.erase(iter);
+}
+
+void OpParser::EnsureCacheEmpty(const LabelMissingCache& cache)
+{
+    if (cache.size() == 0)
+        return;
+
+    for (auto keyval : cache)
+    {
+        auto& vec = keyval.second;
+        if (vec.size() == 0)
+            continue;
+
+        std::string label = keyval.first;
+        std::string line = patch::to_string(vec[0]);
+        throw CompileException("Error: unknown label '" + label + "', on line " + line);
+    }
+}
+
 

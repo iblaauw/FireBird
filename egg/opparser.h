@@ -11,9 +11,11 @@ class OpParser
 {
 private:
     typedef std::vector<std::string> Tokens;
+    typedef std::map<std::string, std::vector<int>> LabelMissingCache;
 
     std::map<std::string, int> labels;
-    std::map<std::string, std::vector<int>> labelsNeeded;
+    LabelMissingCache labelsNeeded;
+    LabelMissingCache dataLabelsNeeded;
 public:
     std::vector<opvalue> ops;
 
@@ -30,6 +32,9 @@ private:
 
     void AddLabel(const std::string& label);
     void SetLabelImm(const std::string& label, opvalue& val);
+    void BackAddLabel(const std::string& label, LabelMissingCache& cache, uint16_t address, bool isDataLabel);
+
+    void EnsureCacheEmpty(const LabelMissingCache& cache);
 };
 
 DECL_EXCEPTION(CompileException);
