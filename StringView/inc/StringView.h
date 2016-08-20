@@ -39,10 +39,11 @@ private:
     StringView(int start, int end, std::shared_ptr<IStringBuffer> buffer);
 };
 
-StringView operator"" _sv(const char* str)
-{
-    return StringView::FromLiteral(str);
-}
+StringView operator"" _sv(const char* str, size_t);
+
+#include <iostream>
+
+std::ostream& operator<<(std::ostream& os, const StringView& sv);
 
 #include <functional>
 

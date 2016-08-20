@@ -6,6 +6,8 @@ temp/
 *.fb
 *.a
 *.o
+*.exe
 
 firebird.exe
 fireegg.exe
+

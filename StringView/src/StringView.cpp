@@ -125,6 +125,18 @@ char StringView::operator[](int index) const
 
 StringView::operator std::string() const
 {
-    return std::string(_buffer->GetData(), Size());
+    return std::string(begin(), end());
+}
+
+StringView operator"" _sv(const char* str, size_t)
+{
+    return StringView::FromLiteral(str);
+}
+
+std::ostream& operator<<(std::ostream& os, const StringView& sv)
+{
+    std::string str = static_cast<std::string>(sv);
+    os << str;
+    return os;
 }
 

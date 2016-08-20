@@ -12,7 +12,7 @@ public:
 class CharBuffer : public IStringBuffer
 {
 private:
-    char* data;
+    const char* data;
     int size;
     bool managed;
 public:
@@ -20,8 +20,13 @@ public:
     {
         if (copy)
         {
-            data =  new char[length];
-            memcpy(data, str, length);
+            char* data_addr =  new char[length];
+            memcpy(data_addr, str, length);
+            data = data_addr;
+        }
+        else
+        {
+            data = str;
         }
     }
 

@@ -7,17 +7,15 @@ INC_DIR=inc
 SOURCES=$(wildcard $(SRC_DIR)/*.cpp)
 OBJECTS=$(patsubst $(SRC_DIR)/%.cpp, $(BIN_DIR)/%.o, $(SOURCES))
 
-TARGET=$(LIB_DIR)/StringView.a
+TARGET=$(LIB_DIR)/libStringView.a
 
 CPPFLAGS=-Wall -Werror -std=c++11 -I$(INC_DIR)
 
 all: $(TARGET)
 
 $(TARGET) : $(OBJECTS)
-	mkdir -p $(DEST_DIR)
 	mkdir -p $(LIB_DIR)
 	ar crf $@ $^
-	cp $@ $(DEST_DIR)
 
 $(BIN_DIR)/%.o : $(SRC_DIR)/%.cpp
 	mkdir -p $(BIN_DIR)
@@ -26,3 +24,4 @@ $(BIN_DIR)/%.o : $(SRC_DIR)/%.cpp
 clean:
 	rm -r -f bin/*.o
 	rm -r -f lib/*.a
+
