@@ -1,10 +1,19 @@
 #include "parse_args.h"
-#include "common.h"
 #include <iostream>
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
+#include <sstream>
+
+// Fixes the fact that my compiler has no to_string (known bug)
+template<typename T>
+static std::string to_string(const T& val)
+{
+    std::ostringstream ss;
+    ss << val;
+    return ss.str();
+}
 
 // Helper map Add function
 template <typename KeyType, typename ValType>
@@ -12,7 +21,7 @@ static void Add(std::map<KeyType, ValType>& selfMap, KeyType& key, ValType& val)
 {
     auto iter = selfMap.find(key);
     if (iter != selfMap.end())
-        throw ParseException("Option already exists: " + patch::to_string(key));
+        throw ParseException("Option already exists: " + to_string(key));
 
     selfMap.insert(iter, typename std::map<KeyType,ValType>::value_type(key, val));
 }

@@ -11,7 +11,10 @@ EGG_OBJECTS=$(EGG_SOURCES:%.cpp=$(OUTDIR)/%.o)
 COMMON_SOURCES=$(wildcard common/*.cpp)
 COMMON_OBJECTS=$(COMMON_SOURCES:%.cpp=$(OUTDIR)/%.o)
 
-INCLUDES=-Icommon
+LIB_SEARCH_FLAGS=-Lparse_args/lib
+LIB_FLAGS=-lparse_args
+
+INCLUDES=-Icommon -Iparse_args/inc
 
 CPPFLAGS=--std=c++11 -Wall
 
@@ -22,10 +25,10 @@ default: all
 all: firebird fireegg
 
 firebird: $(OBJECTS) $(COMMON_OBJECTS)
-	g++ $^ -o $@
+	g++ $(LIB_SEARCH_FLAGS) $^ $(LIB_FLAGS) -o $@
 
 fireegg: $(EGG_OBJECTS) $(COMMON_OBJECTS)
-	g++ $^ -o $@
+	g++ $(LIB_SEARCH_FLAGS) $^ $(LIB_FLAGS) -o $@
 
 test: fireegg
 	rm -f test1.fb
