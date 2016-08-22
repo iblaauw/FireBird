@@ -32,7 +32,7 @@ bool TestFramework::Validate() const
     }
 
     std::string line;
-    bool moreOutputExpected = std::getline(*inFile, line);
+    bool moreOutputExpected = (bool)std::getline(*inFile, line);
 
     if (moreOutputExpected)
     {
@@ -52,7 +52,7 @@ TestFramework::TestFramework() :
 std::string TestFramework::GetNextOutput()
 {
     std::string line;
-    bool success = std::getline(*inFile, line);
+    bool success = (bool)std::getline(*inFile, line);
     if (!success)
     {
         std::cout << "Test failure: no more output is expected" << std::endl;

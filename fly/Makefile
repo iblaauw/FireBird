@@ -1,9 +1,9 @@
 # A reusable basic makefile:
-# just replace the following 4 variables below
-OUTDIR := build
+# just replace the following variables below
+TARGET := firefly
+
 SOURCE_DIRS := frontend
 INCLUDE_DIRS := frontend ../StringView/inc
-TARGET := firefly
 
 LIBS := ../StringView/lib/libStringView.a
 
@@ -14,6 +14,8 @@ CPPFLAGS := --std=c++11 -Wall
 
 
 # BEGIN STUFF THAT SHOULDN'T BE CHANGED
+
+OUTDIR := build
 
 GLOB_SOURCES=$(wildcard $(mydir)/*.$(SRC_EXT))
 
