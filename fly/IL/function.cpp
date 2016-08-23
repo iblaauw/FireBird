@@ -1,7 +1,7 @@
 #include "function.h"
 #include "ilexception.h"
 
-firefly::IL::Function::AddExpression(ExpressionPtr exp)
+void firefly::IL::Function::AddExpression(ExpressionPtr exp)
 {
     AssertNonNull(exp);
     expressions.push_back(exp);

@@ -2,8 +2,8 @@
 # just replace the following variables below
 TARGET := firefly
 
-SOURCE_DIRS := frontend
-INCLUDE_DIRS := frontend ../StringView/inc
+SOURCE_DIRS := frontend IL
+INCLUDE_DIRS := frontend ../StringView/inc IL
 
 LIBS := ../StringView/lib/libStringView.a
 
@@ -42,6 +42,10 @@ $(OUTDIR)/%.o : %.cpp
 
 clean:
 	rm -f $(TARGET)
+ifeq ($(strip $(OUTDIR)),)
+	echo "ERROR: clean would attempt to remove the root directory. Your makefile is completely broken, please fix it carefully."
+else
 	rm -f -r $(OUTDIR)/*
+endif
 
 

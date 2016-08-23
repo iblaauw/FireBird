@@ -1,6 +1,6 @@
 #pragma once
 
-#include <StringView>
+#include <StringView.h>
 #include <memory>
 
 namespace firefly
@@ -21,7 +21,6 @@ namespace IL
         virtual ExpressionType GetType() const = 0;
     };
 
-
     class ErrorExpression : public Expression
     {
     private:
@@ -34,7 +33,7 @@ namespace IL
             message = (std::string)sv;
         }
 
-        ExpressionType GetType() override const { return ERROR; }
+        ExpressionType GetType() const override { return ERROR; }
     };
 
     using ExpressionPtr = std::shared_ptr<Expression>;

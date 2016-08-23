@@ -15,7 +15,7 @@ namespace IL
         ILException(std::string message) : message(message) {}
         ILException(const char* message) : message(message) {}
 
-        const char* what() override const { return message.c_str(); }
+        const char* what() const throw() override { return message.c_str(); }
     };
 }
 }
