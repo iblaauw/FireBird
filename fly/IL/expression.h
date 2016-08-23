@@ -11,9 +11,10 @@ namespace IL
     {
         ERROR = -1,
         OPERAND,
-        DEFINITION,
-        ASSIGNMENT,
+        DECLARATION,
         FUNC_CALL,
+        VARIABLE,
+        CONSTANT
     };
 
     class Expression

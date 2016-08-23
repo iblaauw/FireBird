@@ -1,6 +1,7 @@
 #pragma once
 
 #include "expression.h"
+#include "StringView.h"
 
 namespace firefly
 {
@@ -10,10 +11,11 @@ namespace IL
     {
     public:
         StringView operand;
-        Expression* left, right;
+        ExpressionPtr left, right;
+        Type resultingType;
 
         OperandExpresion(StringView operand, 
-            Expression* left, Expression* right) :
+            ExpressionPtr left, ExpressionPtr right) :
             operand(operand), left(left), right(right)
         {}
 

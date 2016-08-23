@@ -1,6 +1,8 @@
 #pragma once
 
 #include "expression.h"
+#include "functionsignature.h"
+
 #include <string>
 #include <vector>
 
@@ -16,12 +18,17 @@ namespace IL
     public:
         typedef decltype(expressions.begin()) iter_type;
 
-        Function(const std::string& name) : name(name), expressions()
+        FunctionSignaturePtr signature;
+
+        Function(const std::string& name, FunctionSignaturePtr sig) 
+            : name(name), expressions(), signature(sig)
         {}
 
-        void AddExpression(ExpressionPtr exp); 
+        void AddExpression(ExpressionPtr exp);
         iter_type begin();
         iter_type end();
     };
+
+    using FUnctionPtr = std::shared_ptr<Function>;
 }
 }
