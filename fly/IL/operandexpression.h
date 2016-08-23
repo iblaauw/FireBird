@@ -1,25 +1,28 @@
 #pragma once
 
-#include "expression.h"
-#include "StringView.h"
+#include "typedexpression.h"
 
 namespace firefly
 {
 namespace IL
 {
-    class OperandExpression : public Expression
+    enum OperandType
+    {
+        PLUS,
+        MINUS,
+        TIMES,
+        DIVIDES,
+    };
+
+    class OperandExpression : public TypedExpression
     {
     public:
-        StringView operand;
+        OperandType type;
         ExpressionPtr left, right;
-        Type resultingType;
-
-        OperandExpresion(StringView operand, 
-            ExpressionPtr left, ExpressionPtr right) :
-            operand(operand), left(left), right(right)
-        {}
+        TypePtr resultingType;
 
         ExpressionType GetType() override const { return OPERAND; }
+        TypePtr GetILType() override const ( return resultingType; }
     };
 }
 }

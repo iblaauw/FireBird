@@ -12,6 +12,7 @@ namespace IL
         ERROR = -1,
         OPERAND,
         DECLARATION,
+        ASSIGNMENT,
         FUNC_CALL,
         VARIABLE,
         CONSTANT
@@ -42,3 +43,4 @@ namespace IL
     void AssertNonNull(ExpressionPtr ptr);
 }
 }
+

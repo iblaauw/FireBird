@@ -1,7 +1,6 @@
 #pragma once
 
-#include "expression.h"
-#include "type.h"
+#include "typedexpression.h"
 #include <StringView.h>
 
 namespace firefly
@@ -10,11 +9,13 @@ namespace IL
 {
     class ConstantExpression : public Expression
     {
-    public:
+    private:
         TypePtr type;
+    public:
         StringView constant;
 
         ExpressionType GetType() const override { return CONSTANT; }
+        TypePtr GetILType() const override { return type; }
     };
 }
 }
