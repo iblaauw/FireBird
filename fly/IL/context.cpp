@@ -7,14 +7,23 @@ using ContextPtr = firefly::IL::ContextPtr;
 
 /*static*/Context* Context::topInstance = new Context();
 
-bool Context::TryGetVariable(StringView name, VariablePtr* outVal)
+template <class PtrType>
+bool TryGetFromMap(StringView key, const std::map<StringView,PtrType>& map, PtrType* outVal)
 {
-    auto iter = variables.find(name);
-    if (iter != variables.end())
+    auto iter = map.find(key);
+    if (iter != map.end())
     {
         *outVal = iter->second;
         return true;
     }
+    return false;
+}
+
+bool Context::TryGetVariable(StringView name, VariablePtr* outVal)
+{
+    bool success = TryGetFromMap(name, variables, outVal);
+    if (success)
+        return true;
 
     if (parent == nullptr)
         return false;
@@ -24,17 +33,26 @@ bool Context::TryGetVariable(StringView name, VariablePtr* outVal)
 
 bool Context::TryGetFunction(StringView name, FunctionPtr* outVal)
 {
-    auto iter = functions.find(name);
-    if (iter != functions.end())
-    {
-        *outVal = iter->second;
+    bool success = TryGetFromMap(name, functions, outVal);
+    if (success)
         return true;
-    }
 
     if (parent == nullptr)
         return false;
 
     return parent->TryGetFunction(name, outVal);
+}
+
+bool TryGetType(StringView name, TypePtr* outVal)
+{
+    bool success = TryGetFromMap(name, types, outVal);
+    if (success)
+        return true;
+
+    if (parent == nullptr)
+        return false;
+
+    return parent->TryGetTypes(name, outVal);
 }
 
 void Context::AddVariable(VariablePtr variable)

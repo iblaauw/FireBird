@@ -22,11 +22,7 @@ namespace IL
         FunctionSignaturePtr signature;
         ContextPtr functionContext;
 
-        Function(const std::string& name, FunctionSignaturePtr sig, ContextPtr currentContext) 
-            : name(name), expressions(), signature(sig)
-        {
-            functionContext = currentContext->CreateChild();
-        }
+        Function(const std::string& name, FunctionSignaturePtr sig, ContextPtr currentContext);
 
         void AddExpression(ExpressionPtr exp);
         iter_type begin();

@@ -2,6 +2,7 @@
 
 #include "expression.h"
 #include "variable.h"
+#include "type.h"
 #include <StringView.h>
 
 #include <map>
@@ -26,6 +27,7 @@ namespace IL
 
         std::map<StringView,VariablePtr> variables;
         std::map<StringView,FunctionPtr> functions;
+        std::map<StringView,TypePtr> types;
 
         Context() : parent(nullptr) {}
         Context(Context* parent) : parent(parent) {}
@@ -35,9 +37,11 @@ namespace IL
 
         bool TryGetVariable(StringView name, VariablePtr* outVal);
         bool TryGetFunction(StringView name, FunctionPtr* outVal);
+        bool TryGetType(StringView name, TypePtr* outVal);
 
         void AddVariable(VariablePtr variable);
         void AddFunction(FunctionPtr function);
+        void AddType(TypePtr type);
 
         ContextPtr CreateChild();
     private:
