@@ -32,6 +32,7 @@ namespace token
     class Token
     {
     public:
+
         TokenType type;
         StringView val;
 

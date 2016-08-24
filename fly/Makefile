@@ -2,8 +2,8 @@
 # just replace the following variables below
 TARGET := firefly
 
-SOURCE_DIRS := frontend IL
-INCLUDE_DIRS := frontend ../StringView/inc IL
+SOURCE_DIRS := frontend IL tokenizer
+INCLUDE_DIRS := frontend ../StringView/inc IL tokenizer
 
 LIBS := ../StringView/lib/libStringView.a
 

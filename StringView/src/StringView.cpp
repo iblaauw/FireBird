@@ -3,6 +3,9 @@
 
 #include <cstring>
 
+StringView::StringView() : _buffer(), _start(0), _end(0)
+{}
+
 StringView::StringView(const std::string& str)
 {
     _start = 0;

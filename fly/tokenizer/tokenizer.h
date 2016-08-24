@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <deque>
+#include <map>
 
 namespace firefly
 {
@@ -13,6 +14,9 @@ namespace token
     class Tokenizer
     {
     private:
+        static std::map<char,TokenType> singleTypeMap;
+        static std::map<StringView,TokenType> multiTypeMap;
+
         std::istream& input;
         std::deque<Token> tokens; // TODO: replace with a linked list?
 
@@ -37,8 +41,10 @@ namespace token
         bool GrabLine();
         bool HandleChar(char c);
 
-        void AddToUnknown(char val);
+        void AddToUnknown();
         void EndUnknown();
+
+        void AddToken(TokenType type);
     };
 }
 }

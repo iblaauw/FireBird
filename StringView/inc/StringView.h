@@ -12,6 +12,7 @@ private:
     int _start;
     int _end;
 public:
+    StringView();
     StringView(const std::string& str);
     StringView(const char* str);
 
