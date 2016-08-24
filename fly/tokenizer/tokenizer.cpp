@@ -143,7 +143,7 @@ void Tokenizer::AddToUnknown()
         return;
 
     hasUnknown = true;
-    unkStart = curPos;
+    unkStart = curPos - 1; // curPos was already incremented
 }
 
 void Tokenizer::EndUnknown()
@@ -151,7 +151,8 @@ void Tokenizer::EndUnknown()
     if (!hasUnknown)
         return;
 
-    StringView value = currentLine.Slice(unkStart, curPos);
+    int unkEnd = curPos - 1; // curPos was already incremented
+    StringView value = currentLine.Slice(unkStart, unkEnd);
 
     // Is this 'unknown' a keyword?
     auto iter = multiTypeMap.find(value);

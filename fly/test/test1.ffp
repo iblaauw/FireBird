@@ -1,0 +1,16 @@
+
+
+int main()
+{
+    int thing;
+    thing = thing + 1;
+    print(thing);
+
+    if (true)
+        return 5;
+    else
+        return 7;
+}
+
+// Comment
+
