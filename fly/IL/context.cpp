@@ -43,7 +43,7 @@ bool Context::TryGetFunction(StringView name, FunctionPtr* outVal)
     return parent->TryGetFunction(name, outVal);
 }
 
-bool TryGetType(StringView name, TypePtr* outVal)
+bool Context::TryGetType(StringView name, TypePtr* outVal)
 {
     bool success = TryGetFromMap(name, types, outVal);
     if (success)
@@ -52,7 +52,7 @@ bool TryGetType(StringView name, TypePtr* outVal)
     if (parent == nullptr)
         return false;
 
-    return parent->TryGetTypes(name, outVal);
+    return parent->TryGetType(name, outVal);
 }
 
 void Context::AddVariable(VariablePtr variable)
@@ -73,8 +73,17 @@ void Context::AddFunction(FunctionPtr function)
     functions.emplace(name, function);
 }
 
-ContextPtr Context::CreateChild() 
-{ 
+void Context::AddType(TypePtr type)
+{
+    StringView name = type->value;
+    if (IsNameUsed(name))
+        throw ILException("Cannot declare function, the name '" + static_cast<std::string>(name) + "' is already being used.");
+
+    types.emplace(name, type);
+}
+
+ContextPtr Context::CreateChild()
+{
     Context* newcontext = new Context(this);
     return ContextPtr(newcontext);
 }
@@ -87,6 +96,10 @@ bool Context::IsNameUsed(StringView name)
 
     auto iter2 = functions.find(name);
     if (iter2 != functions.end())
+        return true;
+
+    auto iter3 = types.find(name);
+    if (iter3 != types.end())
         return true;
 
     if (parent == nullptr)
