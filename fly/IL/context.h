@@ -44,7 +44,7 @@ namespace IL
         void AddType(TypePtr type);
 
         ContextPtr CreateChild();
-    private:
+
         bool IsNameUsed(StringView name);
     };
 

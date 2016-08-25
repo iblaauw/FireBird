@@ -22,6 +22,7 @@ namespace IL
         FunctionSignaturePtr signature;
         ContextPtr functionContext;
 
+        Function();
         Function(const std::string& name, FunctionSignaturePtr sig, ContextPtr currentContext);
 
         void AddExpression(ExpressionPtr exp);
@@ -31,6 +32,6 @@ namespace IL
         inline const std::string& GetName() const { return name; }
     };
 
-    using FUnctionPtr = std::shared_ptr<Function>;
+    using FunctionPtr = std::shared_ptr<Function>;
 }
 }

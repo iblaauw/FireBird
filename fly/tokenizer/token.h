@@ -38,6 +38,7 @@ namespace token
 
         Token(TokenType type) : type(type) {}
         Token(StringView val) : type(UNKNOWN), val(val) {}
+        std::string ToString() const;
     };
 }
 }

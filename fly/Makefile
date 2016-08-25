@@ -32,7 +32,7 @@ LIB_FLAGS := $(patsubst lib%,-l%,$(LIB_FILES))
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS) $(LIBS)
-	g++ $(LIB_DIR_FLAGS) $^ $(LIB_FLAGS) -o $@
+	g++ $(LIB_DIR_FLAGS) $(OBJECTS) $(LIB_FLAGS) -o $@
 
 $(OUTDIR)/%.o : %.cpp
 	mkdir -p $(@D)
@@ -43,7 +43,7 @@ $(OUTDIR)/%.o : %.cpp
 clean:
 	rm -f $(TARGET)
 ifeq ($(strip $(OUTDIR)),)
-	echo "ERROR: clean would attempt to remove the root directory. Your makefile is completely broken, please fix it carefully."
+	@echo "ERROR: clean attempted to remove the root directory. Your makefile is completely broken, please fix it carefully."
 else
 	rm -f -r $(OUTDIR)/*
 endif
