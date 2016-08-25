@@ -28,6 +28,10 @@ using TokenType = firefly::token::TokenType;
     { "else"_sv   , firefly::token::ELSE   },
 };
 
+Tokenizer::Tokenizer(std::istream& input) : input(input), tokens(),
+    curPos(0), lineNum(0) {}
+
+
 bool Tokenizer::Advance()
 {
     bool done = false;

@@ -97,15 +97,11 @@ int main(int argc, char** argv)
         bool success = tokenizer.Advance();
 
         flushTokenizer(tokenizer);
-        
+
         if (!success) // EOF
             break;
     }
 
-    std::cout << "Hello World" << std::endl;
-    StringView view = "Hello There"_sv;
-    StringView view2 = view.To(5);
-    std::cout << view2 << std::endl;
     return 0;
 }
 

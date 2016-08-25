@@ -27,7 +27,7 @@ namespace token
         bool hasUnknown = false;;
         int unkStart;
     public:
-        Tokenizer(std::istream& input) : input(input), tokens() {}
+        Tokenizer(std::istream& input);
         bool Advance();
         void Consume();
 
