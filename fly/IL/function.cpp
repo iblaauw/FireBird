@@ -2,12 +2,11 @@
 #include "ilexception.h"
 
 firefly::IL::Function::Function(
-    const std::string& name, 
-    FunctionSignaturePtr sig, 
-    ContextPtr currentContext)
-        : name(name), expressions(), signature(sig)
+    FunctionSignaturePtr sig,
+    ContextPtr funcContext)
+        : expressions(), signature(sig), functionContext(funcContext)
 {
-    functionContext = currentContext->CreateChild();
+    name = sig->name;
 }
 
 void firefly::IL::Function::AddExpression(ExpressionPtr exp)
@@ -25,3 +24,4 @@ firefly::IL::Function::iter_type firefly::IL::Function::end()
 {
     return expressions.end();
 }
+

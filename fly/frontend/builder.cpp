@@ -17,10 +17,10 @@ void Builder::Build()
 {
     while (true)
     {
-        if (tokenizer.Size() == 0)
+        if (tokenizer.size() == 0)
         {
             bool success = tokenizer.Advance();
-            if (!success && tokenizer.Size() == 0)
+            if (!success && tokenizer.size() == 0)
                 return;
         }
 
@@ -43,10 +43,10 @@ void Builder::InitBuiltins()
 
 void Builder::Load(int amount)
 {
-    if (tokenizer.Size() >= amount)
+    if (tokenizer.size() >= amount)
         return;
 
-    while (tokenizer.Size() < amount)
+    while (tokenizer.size() < amount)
     {
         bool success = tokenizer.Advance();
         if (!success)
@@ -57,13 +57,13 @@ void Builder::Load(int amount)
 IL::TypePtr Builder::ParseType()
 {
     Load(1);
-    const Token& token = tokenizer.Current();
-    if (first.type != token::UNKNOWN)
+    const Token& tok = tokenizer.Current();
+    if (tok.type != token::UNKNOWN)
         throw FrontEndException("Expected type");
 
-    StringView typeName = token.val;
+    StringView typeName = tok.val;
 
-    TypePtr type;
+    IL::TypePtr type;
     bool success = currentContext->TryGetType(typeName, &type);
     if (!success)
         throw FrontEndException("Unknown type.");
@@ -76,20 +76,20 @@ IL::TypePtr Builder::ParseType()
 StringView Builder::ParseIdentifier()
 {
     Load(1);
-    const Token& token = tokenizer.Current();
-    if (first.type != token::UNKNOWN)
+    const Token& tok = tokenizer.Current();
+    if (tok.type != token::UNKNOWN)
         throw FrontEndException("Expected type");
 
     tokenizer.Consume();
 
-    return token.val;
+    return tok.val;
 }
 
 void Builder::ParseSpecific(token::TokenType type)
 {
     Load(1);
-    const Token& token = tokenizer.Current();
-    if (first.type != type)
+    const Token& tok = tokenizer.Current();
+    if (tok.type != type)
         throw FrontEndException("Expected ''");
 
     tokenizer.Consume();
@@ -97,15 +97,15 @@ void Builder::ParseSpecific(token::TokenType type)
 
 IL::FunctionPtr Builder::ParseFunction()
 {
-    ContextPtr funcContext = currentContext->CreateChild();
+    IL::ContextPtr funcContext = currentContext->CreateChild();
     IL::FunctionSignaturePtr sig = ParseFuncSig(funcContext);
 
-    IL::FunctionPtr func = std::make_shared<IL::Function>();
+    IL::FunctionPtr func = std::make_shared<IL::Function>(sig, funcContext);
     func->functionContext = funcContext;
     func->signature = sig;
 
     ParseSpecific(token::BRACKET_OPEN);
-    ContextPtr oldContext = currentContext;
+    IL::ContextPtr oldContext = currentContext;
     currentContext = funcContext;
 
     ParseFunctionContext(func);
@@ -116,9 +116,9 @@ IL::FunctionPtr Builder::ParseFunction()
     return func;
 }
 
-IL::FunctionSignaturePtr Builder::ParseFuncSig(ContextPtr funcContext)
+IL::FunctionSignaturePtr Builder::ParseFuncSig(IL::ContextPtr funcContext)
 {
-    TypePtr returntype = ParseType();
+    IL::TypePtr returntype = ParseType();
     StringView name = ParseIdentifier();
     if (currentContext->IsNameUsed(name))
         throw FrontEndException("The name '" + static_cast<std::string>(name) + "' is already being used.");
@@ -128,13 +128,13 @@ IL::FunctionSignaturePtr Builder::ParseFuncSig(ContextPtr funcContext)
     sig->returnType = returntype;
 
     ParseSpecific(token::PAREN_OPEN);
-    ParseFunctionArgs();
+    ParseFunctionArgs(sig, funcContext);
     ParseSpecific(token::PAREN_CLOSE);
 
     return sig;
 }
 
-void Builder::ParseFunctionArgs(FunctionSignaturePtr sig, ContextPtr funcContext)
+void Builder::ParseFunctionArgs(IL::FunctionSignaturePtr sig, IL::ContextPtr funcContext)
 {
     Load(1);
     const Token& tok = tokenizer.Current();
@@ -143,7 +143,7 @@ void Builder::ParseFunctionArgs(FunctionSignaturePtr sig, ContextPtr funcContext
 
     while (true)
     {
-        IL::VariablePtr variable = std::make_shared<IL::VariablePtr>();
+        IL::VariablePtr variable = std::make_shared<IL::Variable>();
         variable->type = ParseType();
         variable->name = ParseIdentifier();
 
@@ -167,7 +167,8 @@ void Builder::ParseFunctionContext(IL::FunctionPtr func)
     while (true)
     {
         Load(1);
-        if (tok.type == toke::BRACKET_CLOSE)
+        const token::Token& tok = tokenizer.Current();
+        if (tok.type == token::BRACKET_CLOSE)
             return;
 
         // ParseExpression will return a ErrorExpression if something fails

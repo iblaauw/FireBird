@@ -22,6 +22,7 @@ namespace token
         STAR,
         EQUALS,
         QUOTE,
+        COMMA,
 
         // Multi Char
         RETURN,

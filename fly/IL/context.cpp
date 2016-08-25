@@ -5,7 +5,7 @@
 using Context = firefly::IL::Context;
 using ContextPtr = firefly::IL::ContextPtr;
 
-/*static*/Context* Context::topInstance = new Context();
+/*static*/ContextPtr Context::topInstance(new Context());
 
 template <class PtrType>
 bool TryGetFromMap(StringView key, const std::map<StringView,PtrType>& map, PtrType* outVal)
@@ -85,7 +85,9 @@ void Context::AddType(TypePtr type)
 ContextPtr Context::CreateChild()
 {
     Context* newcontext = new Context(this);
-    return ContextPtr(newcontext);
+    ContextPtr ptr(newContext);
+    children.push_back(ptr);
+    return ptr;
 }
 
 bool Context::IsNameUsed(StringView name)

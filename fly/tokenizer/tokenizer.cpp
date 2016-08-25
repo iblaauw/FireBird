@@ -19,6 +19,7 @@ using TokenType = firefly::token::TokenType;
     { '*', firefly::token::STAR          },
     { '=', firefly::token::EQUALS        },
     { '"', firefly::token::QUOTE         },
+    { ',', firefly::token::COMMA         },
 };
 
 /*static*/ std::map<StringView,TokenType> Tokenizer::multiTypeMap =

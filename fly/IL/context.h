@@ -6,6 +6,7 @@
 #include <StringView.h>
 
 #include <map>
+#include <vector>
 
 namespace firefly
 {
@@ -21,7 +22,7 @@ namespace IL
     class Context
     {
     private:
-        static Context* topInstance;
+        static ContextPtr topInstance;
 
         Context* parent;
 
@@ -29,11 +30,13 @@ namespace IL
         std::map<StringView,FunctionPtr> functions;
         std::map<StringView,TypePtr> types;
 
+        std::vector<ContextPtr> children;
+
         Context() : parent(nullptr) {}
         Context(Context* parent) : parent(parent) {}
     public:
 
-        static Context* GetTopLevel() { return topInstance; }
+        static ContextPtr GetTopLevel() { return topInstance; }
 
         bool TryGetVariable(StringView name, VariablePtr* outVal);
         bool TryGetFunction(StringView name, FunctionPtr* outVal);
