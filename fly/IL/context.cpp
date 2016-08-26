@@ -84,7 +84,7 @@ void Context::AddType(TypePtr type)
 
 ContextPtr Context::CreateChild()
 {
-    Context* newcontext = new Context(this);
+    Context* newContext = new Context(this);
     ContextPtr ptr(newContext);
     children.push_back(ptr);
     return ptr;

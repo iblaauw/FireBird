@@ -14,7 +14,7 @@ namespace IL
     class Function
     {
     private:
-        std::string name;
+        StringView name;
         std::vector<ExpressionPtr> expressions;
     public:
         typedef decltype(expressions.begin()) iter_type;
@@ -28,7 +28,7 @@ namespace IL
         iter_type begin();
         iter_type end();
 
-        inline const std::string& GetName() const { return name; }
+        inline StringView GetName() const { return name; }
     };
 
     using FunctionPtr = std::shared_ptr<Function>;

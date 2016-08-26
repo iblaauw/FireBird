@@ -1,4 +1,5 @@
 #include "builder.h"
+#include "frontendexception.h"
 
 using namespace firefly;
 
@@ -50,7 +51,7 @@ void Builder::Load(int amount)
     {
         bool success = tokenizer.Advance();
         if (!success)
-            throw FrontendException("Unexpected end of file");
+            throw FrontEndException("Unexpected end of file");
     }
 }
 
@@ -59,14 +60,14 @@ IL::TypePtr Builder::ParseType()
     Load(1);
     const Token& tok = tokenizer.Current();
     if (tok.type != token::UNKNOWN)
-        throw FrontEndException("Expected type");
+        throw FrontEndException("Expected type", tok);
 
     StringView typeName = tok.val;
 
     IL::TypePtr type;
     bool success = currentContext->TryGetType(typeName, &type);
     if (!success)
-        throw FrontEndException("Unknown type.");
+        throw FrontEndException("Unknown type.", tok);
 
     tokenizer.Consume();
 
@@ -78,7 +79,7 @@ StringView Builder::ParseIdentifier()
     Load(1);
     const Token& tok = tokenizer.Current();
     if (tok.type != token::UNKNOWN)
-        throw FrontEndException("Expected type");
+        throw FrontEndException("Expected type", tok);
 
     tokenizer.Consume();
 
@@ -90,7 +91,7 @@ void Builder::ParseSpecific(token::TokenType type)
     Load(1);
     const Token& tok = tokenizer.Current();
     if (tok.type != type)
-        throw FrontEndException("Expected ''");
+        throw FrontEndException("Expected ''", tok);
 
     tokenizer.Consume();
 }

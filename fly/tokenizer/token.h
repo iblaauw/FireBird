@@ -36,6 +36,7 @@ namespace token
 
         TokenType type;
         StringView val;
+        int linenum;
 
         Token(TokenType type) : type(type) {}
         Token(StringView val) : type(UNKNOWN), val(val) {}
