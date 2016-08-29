@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Type.h"
+#include "type.h"
 #include <StringView.h>
 
 namespace firefly
