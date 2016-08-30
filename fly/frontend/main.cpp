@@ -1,4 +1,5 @@
 #include "tokenizer.h"
+#include "builder.h"
 
 #include <StringView.h>
 #include <iostream>
@@ -89,18 +90,22 @@ int main(int argc, char** argv)
         std::cout << "Error: Couldn't open file " << filename << std::endl;
         return -1;
     }
-    
+
     token::Tokenizer tokenizer(infile);
 
-    while (true)
-    {
-        bool success = tokenizer.Advance();
+//    while (true)
+//    {
+//        bool success = tokenizer.Advance();
+//
+//        flushTokenizer(tokenizer);
+//
+//        if (!success) // EOF
+//            break;
+//    }
 
-        flushTokenizer(tokenizer);
-
-        if (!success) // EOF
-            break;
-    }
+    frontend::Builder builder(tokenizer);
+    builder.Build();
+    builder.DebugPrint();
 
     return 0;
 }

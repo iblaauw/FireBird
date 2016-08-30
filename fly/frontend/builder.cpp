@@ -2,6 +2,8 @@
 #include "frontendexception.h"
 #include "hiddenerror.h"
 
+#include <iostream>
+
 using namespace firefly;
 
 using Builder = frontend::Builder;
@@ -98,10 +100,24 @@ void Builder::Build()
                 return;
         }
 
+        std::cout << "Finding function..." << std::endl;
+
         // Only functions are allowed at the top level at the moment
         IL::FunctionExpressionPtr func = ParseFunction();
         functionSet.push_back(func);
         //currentContext->AddFunction(func);
+    }
+}
+
+void Builder::DebugPrint() const
+{
+    IL::TreePrinter printer;
+    printer.Print("=== Begin Tree Output ===");
+
+    for (auto& func : functionSet)
+    {
+        func->DebugPrint(printer);
+        printer.PrintLine();
     }
 }
 
@@ -133,6 +149,7 @@ void Builder::Load(int amount)
 
 IL::FunctionExpressionPtr Builder::ParseFunction()
 {
+    std::cout << "Parsing Function" << std::endl;
     IL::FunctionExpressionPtr func = ParseFunctionSig();
     if (func->GetType() == IL::ERROR)
         return func;
@@ -150,6 +167,10 @@ IL::FunctionExpressionPtr Builder::ParseFunctionSig()
     const Token& tok2 = tokenizer.At(1);
     const Token& tok3 = tokenizer.At(2);
 
+    tokenizer.Consume();
+    tokenizer.Consume();
+    tokenizer.Consume();
+
     if (tok1.type != token::UNKNOWN)
         return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok1.ToString() + "', expected function definition.");
     if (tok2.type != token::UNKNOWN)
@@ -160,11 +181,14 @@ IL::FunctionExpressionPtr Builder::ParseFunctionSig()
     auto expr = std::make_shared<IL::FunctionExpression>();
     expr->returnType = tok1.val;
     expr->name = tok2.val;
+
     return expr;
 }
 
 void Builder::ParseFunctionArgs(IL::FunctionExpressionPtr func)
 {
+    std::cout << "Parsing func args" << std::endl;
+
     Load(1);
     const Token& firstTok = tokenizer.Current();
     if (firstTok.type == token::PAREN_CLOSE)
@@ -209,6 +233,8 @@ void Builder::ParseFunctionArgs(IL::FunctionExpressionPtr func)
 
 void Builder::ParseExpressionSet(std::vector<IL::ExpressionPtr>& expressions)
 {
+    std::cout << "Parsing Function Expressions..." << std::endl;
+
     expressions.clear();
 
     Load(1);
@@ -369,9 +395,18 @@ void Builder::ParseExpressionSet(std::vector<IL::ExpressionPtr>& expressions)
 
 IL::ExpressionPtr Builder::ParseTopExpression()
 {
+    std::cout << "Parsing Expression" << std::endl;
+
     IL::ExpressionPtr expr = ParseSubExpression(nullptr);
-    while (!IsTopLevel(expr))
+    while (true)
     {
+        Load(1);
+        if (tokenizer.Current().type == token::SEMICOLON)
+        {
+            tokenizer.Consume();
+            break;
+        }
+
         expr = ParseSubExpression(expr);
     }
 
@@ -386,8 +421,7 @@ IL::ExpressionPtr Builder::ParseSubExpression(IL::ExpressionPtr lhs)
     switch (tok.type)
     {
         case token::SEMICOLON:
-            tokenizer.Consume();
-            return lhs;
+            return MakeError("Unexpected token ';'");
         case token::PLUS:
             return AsExpression( DoOperandExpression(IL::PLUS, lhs) );
         case token::MINUS:
@@ -416,6 +450,7 @@ IL::ExpressionPtr Builder::ParseSubExpression(IL::ExpressionPtr lhs)
 
 IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs)
 {
+    std::cout << "Found Operand" << std::endl;
     tokenizer.Consume();
 
     if (!IsTypedExpression(lhs))
@@ -438,6 +473,7 @@ IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL
 
 IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lhs)
 {
+    std::cout << "Found assignment" << std::endl;
     tokenizer.Consume();
 
     if (lhs == nullptr)
@@ -460,6 +496,7 @@ IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lh
 
 IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs)
 {
+    std::cout << "Found Declaration" << std::endl;
     tokenizer.Consume();
     tokenizer.Consume();
 
@@ -476,6 +513,7 @@ IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(const token::Token
 
 IL::VariableExpressionPtr Builder::DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs)
 {
+    std::cout << "Found Variable" << std::endl;
     tokenizer.Consume();
     if (lhs != nullptr)
         return IL::CreateError<IL::VariableExpression>("Unexpected token '" + varTok.ToString() + "'. Expected ';'.");
@@ -487,6 +525,8 @@ IL::VariableExpressionPtr Builder::DoVariableExpression(const token::Token& varT
 
 IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
 {
+    std::cout << "Found const" << std::endl;
+    tokenizer.Consume();
     if (lhs != nullptr)
         return IL::CreateError<IL::ConstantExpression>("Unexpected token '" + cTok.ToString() +  "'. Expected ';'");
 

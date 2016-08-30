@@ -26,6 +26,7 @@ namespace frontend
     public:
         Builder(firefly::token::Tokenizer& tokenizer);
         void Build();
+        void DebugPrint() const;
 
     private:
         void Load(int amount);
