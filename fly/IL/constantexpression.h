@@ -9,10 +9,9 @@ namespace IL
 {
     class ConstantExpression : public Expression
     {
-    private:
-        TypePtr type;
     public:
         StringView constant;
+        TypePtr type;
 
         ExpressionType GetType() const override { return CONSTANT; }
         TypePtr GetILType() const override { return type; }

@@ -10,7 +10,7 @@ namespace IL
     class VariableExpression : public TypedExpression
     {
     public:
-        VariablePtr variable;
+        StringView variable;
 
         ExpressionType GetType() const override { return VARIABLE; }
         TypePtr GetILType() const override { return variable->type; }

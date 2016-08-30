@@ -10,11 +10,8 @@ namespace IL
     class DeclarationExpression : public Expression
     {
     public:
-        TypePtr type;
+        StringView type;
         StringView name;
-        DeclarationExpression(TypePtr type, StringView name) :
-            type(type), name(name) 
-        {}
 
         ExpressionType GetType() const override { return DECLARATION; }
     };
