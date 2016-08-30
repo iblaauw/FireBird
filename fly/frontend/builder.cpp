@@ -113,6 +113,7 @@ void Builder::DebugPrint() const
 {
     IL::TreePrinter printer;
     printer.Print("=== Begin Tree Output ===");
+    printer.PrintLine();
 
     for (auto& func : functionSet)
     {
@@ -203,11 +204,8 @@ void Builder::ParseFunctionArgs(IL::FunctionExpressionPtr func)
         const Token& tok = tokenizer.Current();
         const Token& tok2 = tokenizer.At(1);
 
-        auto declExpr = DoDeclarationExpression(tok, tok2, nullptr);
+        auto declExpr = DoDeclarationExpression(tok, tok2, nullptr); // DoDeclarationExpression consumes the 2 tokens
         func->args.push_back(declExpr);
-
-        tokenizer.Consume();
-        tokenizer.Consume();
 
         Load(1);
         const Token& tok3 = tokenizer.Current();
@@ -484,6 +482,16 @@ IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lh
     auto variable = std::static_pointer_cast<IL::VariableExpression>(lhs);
 
     auto rhs = ParseSubExpression(nullptr);
+
+    std::cout << "=-= Begin debug to delete thing =-=" << std::endl;
+    IL::TreePrinter printer;
+    rhs->DebugPrint(printer);
+    printer.PrintLine();
+    std::cout << "=-= END =-=" << std::endl;
+
+//    if (rhs->GetType() == IL::ERROR)
+//        return rhs; // TODO: create a way to get the error message!
+
     if (!IsTypedExpression(rhs))
         return IL::CreateError<IL::AssignmentExpression>("Invalid assignment value.");
 
@@ -533,7 +541,7 @@ IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok
     const StringView& raw = cTok.val;
     for (int i = 0; i < raw.Size(); i++)
     {
-        if (!IsNumChar(i))
+        if (!IsNumChar(raw[i]))
             return IL::CreateError<IL::ConstantExpression>("Invalid name '"+ static_cast<std::string>(raw) +"'. Variables can't start with numerals.");
     }
 

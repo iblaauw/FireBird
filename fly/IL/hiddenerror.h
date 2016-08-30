@@ -15,7 +15,12 @@ namespace IL
     public:
         std::string message;
         ExpressionType GetType() const override { return ERROR; }
-        void DebugPrint(TreePrinter& printer) const override { printer.Print(message); }
+        void DebugPrint(TreePrinter& printer) const override
+        {
+            printer.Print("[ERROR: ");
+            printer.Print(message);
+            printer.Print(']');
+        }
     };
 
     template <class T>
