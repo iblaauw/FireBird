@@ -15,7 +15,8 @@ namespace IL
         ASSIGNMENT,
         FUNC_CALL,
         VARIABLE,
-        CONSTANT
+        CONSTANT,
+        FUNCTION
     };
 
     class Expression
