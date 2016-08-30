@@ -7,7 +7,7 @@ namespace firefly
 {
 namespace IL
 {
-    class ConstantExpression : public Expression
+    class ConstantExpression : public TypedExpression
     {
     public:
         StringView constant;
@@ -16,5 +16,7 @@ namespace IL
         ExpressionType GetType() const override { return CONSTANT; }
         TypePtr GetILType() const override { return type; }
     };
+
+    using ConstantExpressionPtr = std::shared_ptr<ConstantExpression>;
 }
 }

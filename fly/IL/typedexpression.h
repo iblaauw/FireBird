@@ -10,7 +10,7 @@ namespace IL
     class TypedExpression : public Expression
     {
     public:
-        TypePtr GetILType() const = 0;
+        virtual TypePtr GetILType() const = 0;
     };
 
     using TypedExpressionPtr = std::shared_ptr<TypedExpression>;

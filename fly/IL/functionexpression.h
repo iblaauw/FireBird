@@ -1,6 +1,7 @@
 #pragma once
 
 #include "expression.h"
+#include "declarationexpression.h"
 
 #include <StringView.h>
 #include <memory>
@@ -15,7 +16,7 @@ namespace IL
     public:
         StringView returnType;
         StringView name;
-        std::vector<VariableExpressionPtr> args;
+        std::vector<DeclarationExpressionPtr> args;
         std::vector<ExpressionPtr> expressions;
 
         ExpressionType GetType() const override { return FUNCTION; }

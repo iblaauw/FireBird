@@ -14,6 +14,10 @@ namespace IL
         DIVIDES,
     };
 
+    class OperandExpression;
+
+    using OperandExpressionPtr = std::shared_ptr<OperandExpression>;
+
     class OperandExpression : public TypedExpression
     {
     public:
@@ -21,8 +25,10 @@ namespace IL
         TypedExpressionPtr left, right;
         TypePtr resultingType;
 
-        ExpressionType GetType() override const { return OPERAND; }
-        TypePtr GetILType() override const ( return resultingType; }
+        static OperandExpressionPtr Error(const std::string& message);
+
+        ExpressionType GetType() const override { return OPERAND; }
+        TypePtr GetILType() const override { return resultingType; }
     };
 }
 }

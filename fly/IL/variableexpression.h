@@ -11,9 +11,14 @@ namespace IL
     {
     public:
         StringView variable;
+        TypePtr type;
 
         ExpressionType GetType() const override { return VARIABLE; }
-        TypePtr GetILType() const override { return variable->type; }
+        TypePtr GetILType() const override { return type; }
 
     };
+
+    using VariableExpressionPtr = std::shared_ptr<VariableExpression>;
 }
+}
+

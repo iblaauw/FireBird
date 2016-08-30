@@ -2,6 +2,7 @@
 
 #include "expression.h"
 #include "typedexpression.h"
+#include "variableexpression.h"
 
 namespace firefly
 {
@@ -11,9 +12,11 @@ namespace IL
     {
     public:
         VariableExpressionPtr variable;
-        TypedExpression value;
+        TypedExpressionPtr value;
 
         ExpressionType GetType() const override { return ASSIGNMENT; }
     };
+
+    using AssignmentExpressionPtr = std::shared_ptr<AssignmentExpression>;
 }
 }

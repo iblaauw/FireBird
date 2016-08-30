@@ -1,7 +1,7 @@
 #pragma once
 
 #include "expression.h"
-#inlucde "type.h"
+#include "type.h"
 
 namespace firefly
 {
@@ -15,5 +15,7 @@ namespace IL
 
         ExpressionType GetType() const override { return DECLARATION; }
     };
+
+    using DeclarationExpressionPtr = std::shared_ptr<DeclarationExpression>;
 }
 }

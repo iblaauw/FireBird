@@ -1,11 +1,14 @@
 #pragma once
 
 #include "tokenizer.h"
-#include "context.h"
+
 #include "expression.h"
-#include "function.h"
-#include "functionsignature.h"
-#include "type.h"
+#include "functionexpression.h"
+#include "operandexpression.h"
+#include "assignmentexpression.h"
+#include "declarationexpression.h"
+#include "variableexpression.h"
+#include "constantexpression.h"
 
 #include <vector>
 
@@ -25,7 +28,7 @@ namespace frontend
         void Build();
 
     private:
-        void Builder::Load(int amount);
+        void Load(int amount);
 
         IL::FunctionExpressionPtr ParseFunction();
         IL::FunctionExpressionPtr ParseFunctionSig();
@@ -38,9 +41,9 @@ namespace frontend
 
         IL::OperandExpressionPtr DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs);
         IL::AssignmentExpressionPtr DoAssignmentExpression(IL::ExpressionPtr lhs);
-        IL::DeclarationExpressionPtr DoDeclarationExpression(token::Token& typeTok, token::Token& varTok, IL::ExpressionPtr lhs);
-        IL::VariableExpressionPtr DoVariableExpression(token::Token& varTok, IL::ExpressionPtr lhs);
-        IL::ConstantExpressionPtr DoConstantExpression(token::Token& cTok, IL::ExpressionPtr lhs);
+        IL::DeclarationExpressionPtr DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs);
+        IL::VariableExpressionPtr DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs);
+        IL::ConstantExpressionPtr DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs);
 
 
         /***** OLD *****/

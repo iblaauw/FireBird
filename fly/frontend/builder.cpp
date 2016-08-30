@@ -1,5 +1,6 @@
 #include "builder.h"
 #include "frontendexception.h"
+#include "hiddenerror.h"
 
 using namespace firefly;
 
@@ -8,22 +9,28 @@ using Token = token::Token;
 
 /*********** HELPERS **********************************/
 
-inline IL::ExpressionPointer MakeError(const std::string& error)
+inline IL::ExpressionPtr MakeError(const std::string& error)
 {
     auto errorExpr = std::make_shared<IL::ErrorExpression>(error);
-    return std::static_pointer_cast<Expression>(errorExpr);
+    return std::static_pointer_cast<IL::Expression>(errorExpr);
 }
 
 template <class T>
-inline IL::TypedExpressionPointer AsTyped(std::shared_ptr<T>& val)
+inline IL::TypedExpressionPtr AsTyped(std::shared_ptr<T>& val)
 {
-    return std::static_pointer_cast<TypedExpression>(val);
+    return std::static_pointer_cast<IL::TypedExpression>(val);
 }
 
 template <class T>
-inline IL::ExpressionPointer AsExpression(std::shared_ptr<T>& val)
+inline IL::ExpressionPtr AsExpression(std::shared_ptr<T>& val)
 {
-    return std::static_pointer_cast<Expression>(val);
+    return std::static_pointer_cast<IL::Expression>(val);
+}
+
+template <class T>
+inline IL::ExpressionPtr AsExpression(std::shared_ptr<T>&& val)
+{
+    return std::static_pointer_cast<IL::Expression>(std::forward<std::shared_ptr<T>>(val));
 }
 
 bool IsTypedExpression(IL::ExpressionPtr expr)
@@ -52,11 +59,12 @@ bool IsNumChar(char c)
     return c >= '0' && c <= '9';
 }
 
-bool IsConstant(const IL::Token& token)
+bool IsConstant(const token::Token& token)
 {
-    if (token.type != IL::UNKNOWN)
+    if (token.type != token::UNKNOWN)
         return false;
 
+    StringView val = token.val;
     if (val.Size() == 0)
         return false;
 
@@ -64,9 +72,9 @@ bool IsConstant(const IL::Token& token)
     return IsNumChar(c);
 }
 
-inline bool IsTopLevel(const IL::Expression& expression)
+inline bool IsTopLevel(const IL::ExpressionPtr& expression)
 {
-    auto t = expr->GetType();
+    auto t = expression->GetType();
     return t == IL::DECLARATION || t == IL::ASSIGNMENT || t == IL::FUNC_CALL || t == IL::ERROR;
 }
 
@@ -91,7 +99,7 @@ void Builder::Build()
         }
 
         // Only functions are allowed at the top level at the moment
-        IL::FunctionPtr func = ParseFunction();
+        IL::FunctionExpressionPtr func = ParseFunction();
         functionSet.push_back(func);
         //currentContext->AddFunction(func);
     }
@@ -125,20 +133,22 @@ void Builder::Load(int amount)
 
 IL::FunctionExpressionPtr Builder::ParseFunction()
 {
-    FunctionExpressionPtr func = ParseFunctionSig();
+    IL::FunctionExpressionPtr func = ParseFunctionSig();
     if (func->GetType() == IL::ERROR)
         return func;
 
     ParseFunctionArgs(func);
-    ParseExpressionSet(func.expressions);
+    ParseExpressionSet(func->expressions);
+
+    return func;
 }
 
 IL::FunctionExpressionPtr Builder::ParseFunctionSig()
 {
     Load(3);
-    Token& tok1 = tokenizer.At(0);
-    Token& tok2 = tokenizer.At(1);
-    Token& tok3 = tokenizer.At(2);
+    const Token& tok1 = tokenizer.At(0);
+    const Token& tok2 = tokenizer.At(1);
+    const Token& tok3 = tokenizer.At(2);
 
     IL::FunctionExpressionPtr error; //TODO: create a function error class
     if (tok1.type != token::UNKNOWN)
@@ -148,16 +158,16 @@ IL::FunctionExpressionPtr Builder::ParseFunctionSig()
     if (tok3.type != token::PAREN_OPEN)
         return error;
 
-    auto expr = std::make_shared<FunctionExpression>();
+    auto expr = std::make_shared<IL::FunctionExpression>();
     expr->returnType = tok1.val;
     expr->name = tok2.val;
     return expr;
 }
 
-void Builder::ParseFunctionArgs(FunctionExpressionPtr func)
+void Builder::ParseFunctionArgs(IL::FunctionExpressionPtr func)
 {
     Load(1);
-    Token& firstTok = tokenizer.Current();
+    const Token& firstTok = tokenizer.Current();
     if (firstTok.type == token::PAREN_CLOSE)
     {
         tokenizer.Consume();
@@ -167,17 +177,17 @@ void Builder::ParseFunctionArgs(FunctionExpressionPtr func)
     while (true)
     {
         Load(2);
-        Token& tok = tokenizer.Current();
-        Token& tok2 = tokenizer.At(1);
+        const Token& tok = tokenizer.Current();
+        const Token& tok2 = tokenizer.At(1);
 
-        auto varExpr = DoVariableExpression(tok, tok2, nullptr);
-        func->args.push_back(varExpr);
+        auto declExpr = DoDeclarationExpression(tok, tok2, nullptr);
+        func->args.push_back(declExpr);
 
         tokenizer.Consume();
         tokenizer.Consume();
 
         Load(1);
-        Token& tok3 = tokenizer.Current();
+        const Token& tok3 = tokenizer.Current();
         if (tok3.type == token::PAREN_CLOSE)
         {
             tokenizer.Consume();
@@ -197,7 +207,7 @@ void Builder::ParseFunctionArgs(FunctionExpressionPtr func)
     }
 }
 
-void Builder::ParseExpressionSet(std::vector<ExpressionPtr>& expressions)
+void Builder::ParseExpressionSet(std::vector<IL::ExpressionPtr>& expressions)
 {
     expressions.clear();
 
@@ -222,7 +232,7 @@ void Builder::ParseExpressionSet(std::vector<ExpressionPtr>& expressions)
             break;
         }
 
-        ExpressionPtr expr = ParseTopExpression();
+        IL::ExpressionPtr expr = ParseTopExpression();
         expressions.push_back(expr);
     }
 }
@@ -386,22 +396,22 @@ IL::ExpressionPtr Builder::ParseSubExpression(IL::ExpressionPtr lhs)
             return AsExpression( DoOperandExpression(IL::TIMES, lhs) );
         case token::SLASH:
             return AsExpression( DoOperandExpression(IL::DIVIDES, lhs) );
-        case token::EQUAL:
+        case token::EQUALS:
             return AsExpression( DoAssignmentExpression(lhs) );
-        case UNKNOWN:
+        case token::UNKNOWN:
         {
             if (IsConstant(tok))
                 return DoConstantExpression(tok, lhs);
             Load(2);
-            token::Token& tok2 = tokenizer.At(1);
+            const token::Token& tok2 = tokenizer.At(1);
             if (tok2.type == token::UNKNOWN)
                 return DoDeclarationExpression(tok, tok2, lhs);
             return DoVariableExpression(tok, lhs);
         }
         default:
-            return ErrorExpression("FATAL: unknown token.");
+            return MakeError("FATAL: unknown token.");
     }
-    return ErrorExpression("FATAL: should never be reached");
+    return MakeError("FATAL: should never be reached");
 }
 
 IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs)
@@ -409,16 +419,16 @@ IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL
     tokenizer.Consume();
 
     if (!IsTypedExpression(lhs))
-        return ErrorExpression("Unexpexted token '+'.");
+        return IL::OperandExpression::Error("Unexpexted token '+'.");
 
     IL::ExpressionPtr rhs = ParseSubExpression(nullptr);
     if (!IsTypedExpression(rhs))
-        return ErrorExpression("Invalid second argument for '+'.");
+        return IL::OperandExpression::Error("Invalid second argument for '+'.");
 
-    TypedExpressionPtr typedL = AsTyped(lhs);
-    TypedExpressionPtr typedR = AsTyped(rhs);
+    IL::TypedExpressionPtr typedL = AsTyped(lhs);
+    IL::TypedExpressionPtr typedR = AsTyped(rhs);
 
-    auto expr = std::make_shared<OperandExpression>();
+    auto expr = std::make_shared<IL::OperandExpression>();
     expr->type = optype;
     expr->left = typedL;
     expr->right = typedR;
@@ -431,63 +441,63 @@ IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lh
     tokenizer.Consume();
 
     if (lhs == nullptr)
-        return MakeError("Unexpected token '='");
+        return IL::CreateError<IL::AssignmentExpression>("Unexpected token '='");
 
     if (lhs->GetType() != IL::VARIABLE)
-        return MakeError("Invalid assignment, can only assign to a variable");
-    auto variable = std::static_pointer_cast<VariableExpression>(lhs);
+        return IL::CreateError<IL::AssignmentExpression>("Invalid assignment, can only assign to a variable");
+    auto variable = std::static_pointer_cast<IL::VariableExpression>(lhs);
 
     auto rhs = ParseSubExpression(nullptr);
     if (!IsTypedExpression(rhs))
-        return MakeError("Invalid assignment value.");
+        return IL::CreateError<IL::AssignmentExpression>("Invalid assignment value.");
 
-    auto assignment = std::make_shared<AssignmentExpression>();
+    auto assignment = std::make_shared<IL::AssignmentExpression>();
     assignment->variable = variable;
     assignment->value = AsTyped(rhs);
 
     return assignment;
 }
 
-IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(token::Token& typeTok, token::Token& varTok, IL::ExpressionPtr lhs)
+IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs)
 {
     tokenizer.Consume();
     tokenizer.Consume();
 
     if (lhs != nullptr)
-        return MakeError("Unexpected variable");
+        return IL::CreateError<IL::DeclarationExpression>("Unexpected variable");
 
-    auto expr = std::make_shared<DeclarationExpression>();
+    auto expr = std::make_shared<IL::DeclarationExpression>();
 
-    expr->type = typeToken.value;
-    expr->name = varToken.value;
+    expr->type = typeTok.val;
+    expr->name = varTok.val;
 
     return expr;
 }
 
-IL::VariableExpressionPtr Builder::DoVariableExpression(token::Token& varTok, IL::ExpressionPtr lhs)
+IL::VariableExpressionPtr Builder::DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs)
 {
     tokenizer.Consume();
     if (lhs != nullptr)
-        return MakeError("Unexpected variable");
+        return IL::CreateError<IL::VariableExpression>("Unexpected variable");
 
-    auto expr = std::make_shared<VariableExpression>();
-    expr->variable = varTok;
+    auto expr = std::make_shared<IL::VariableExpression>();
+    expr->variable = varTok.val;
     return expr;
 }
 
-IL::ConstantExpressionPtr Builder::DoConstantExpression(token::Token& cTok, IL::ExpressionPtr lhs)
+IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
 {
     if (lhs != nullptr)
-        return MakeError("Unexpected token '<TODO>'");
+        return IL::CreateError<IL::ConstantExpression>("Unexpected token '<TODO>'");
 
-    StringView& raw = cTok.value;
+    const StringView& raw = cTok.val;
     for (int i = 0; i < raw.Size(); i++)
     {
         if (!IsNumChar(i))
-            return MakeError("Invalid token. Variables can't start with numerals.");
+            return IL::CreateError<IL::ConstantExpression>("Invalid token. Variables can't start with numerals.");
     }
 
-    auto expr = std::make_shared<ConstantExpression>();
+    auto expr = std::make_shared<IL::ConstantExpression>();
     expr->constant = raw;
 
     return expr;

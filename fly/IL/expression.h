@@ -21,6 +21,7 @@ namespace IL
 
     class Expression
     {
+    public:
         virtual ExpressionType GetType() const = 0;
     };
 
