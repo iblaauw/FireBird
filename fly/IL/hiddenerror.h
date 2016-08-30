@@ -13,8 +13,9 @@ namespace IL
     class HiddenErrorExpression : public T
     {
     public:
-        StringView message;
+        std::string message;
         ExpressionType GetType() const override { return ERROR; }
+        void DebugPrint(TreePrinter& printer) const override { printer.Print(message); }
     };
 
     template <class T>

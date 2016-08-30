@@ -151,7 +151,7 @@ IL::FunctionExpressionPtr Builder::ParseFunctionSig()
     const Token& tok3 = tokenizer.At(2);
 
     if (tok1.type != token::UNKNOWN)
-        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok1.ToString() + "', expected function definition.".);
+        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok1.ToString() + "', expected function definition.");
     if (tok2.type != token::UNKNOWN)
         return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok2.ToString() + "', expected function definition.");
     if (tok3.type != token::PAREN_OPEN)

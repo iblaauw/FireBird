@@ -14,6 +14,7 @@ namespace IL
         StringView name;
 
         ExpressionType GetType() const override { return DECLARATION; }
+        void DebugPrint(TreePrinter& printer) const override;
     };
 
     using DeclarationExpressionPtr = std::shared_ptr<DeclarationExpression>;

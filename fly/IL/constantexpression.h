@@ -15,6 +15,7 @@ namespace IL
 
         ExpressionType GetType() const override { return CONSTANT; }
         TypePtr GetILType() const override { return type; }
+        void DebugPrint(TreePrinter& printer) const override { printer.Print(constant); }
     };
 
     using ConstantExpressionPtr = std::shared_ptr<ConstantExpression>;

@@ -15,6 +15,7 @@ namespace IL
 
         ExpressionType GetType() const override { return VARIABLE; }
         TypePtr GetILType() const override { return type; }
+        void DebugPrint(TreePrinter& printer) const override { printer.Print(variable); }
 
     };
 

@@ -23,7 +23,7 @@ static const std::map<TokenType, std::string> stringMapping =
     { ELSE,          "else"   },
 };
 
-const std::string& Token::ToString() const
+std::string Token::ToString() const
 {
     if (type == UNKNOWN)
         return static_cast<std::string>(val);

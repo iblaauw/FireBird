@@ -1,5 +1,7 @@
 #pragma once
 
+#include "treeprinter.h"
+
 #include <StringView.h>
 #include <memory>
 
@@ -23,6 +25,7 @@ namespace IL
     {
     public:
         virtual ExpressionType GetType() const = 0;
+        virtual void DebugPrint(TreePrinter& printer) const = 0;
     };
 
     class ErrorExpression : public Expression
@@ -38,6 +41,7 @@ namespace IL
         }
 
         ExpressionType GetType() const override { return ERROR; }
+        void DebugPrint(TreePrinter& printer) const override { printer.Print(message); }
     };
 
     using ExpressionPtr = std::shared_ptr<Expression>;

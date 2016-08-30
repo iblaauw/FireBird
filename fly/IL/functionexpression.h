@@ -20,6 +20,8 @@ namespace IL
         std::vector<ExpressionPtr> expressions;
 
         ExpressionType GetType() const override { return FUNCTION; }
+        void DebugPrint(TreePrinter& printer) const override;
+
     };
 
     using FunctionExpressionPtr = std::shared_ptr<FunctionExpression>;

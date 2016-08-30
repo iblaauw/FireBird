@@ -4,8 +4,22 @@
 
 using namespace firefly::IL;
 
-/*static*/ OperandExpressionPtr OperandExpression::Error(const std::string& message)
+void OperandExpression::DebugPrint(TreePrinter& printer) const
 {
-    return CreateError<OperandExpression>(message);
+    left->DebugPrint(printer);
+
+    switch (type)
+    {
+        case PLUS: printer.Print('+'); break;
+        case MINUS: printer.Print('-'); break;
+        case TIMES: printer.Print('*'); break;
+        case DIVIDES: printer.Print('/'); break;
+        default:
+            printer.Print("<unknown operand>");
+            break;
+    }
+
+    right->DebugPrint(printer);
 }
+
 

@@ -15,6 +15,7 @@ namespace IL
         TypedExpressionPtr value;
 
         ExpressionType GetType() const override { return ASSIGNMENT; }
+        void DebugPrint(TreePrinter& printer) const override;
     };
 
     using AssignmentExpressionPtr = std::shared_ptr<AssignmentExpression>;
