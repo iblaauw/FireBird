@@ -178,3 +178,148 @@ void Builder::ParseFunctionContext(IL::FunctionPtr func)
     }
 }
 
+IL::ExpressionPtr Builder::ParseTopExpression()
+{
+
+    
+
+
+}
+
+/*********** HELPERS **********************************/
+
+inline IL::ExpressionPointer MakeError(const std::string& error)
+{
+    auto errorExpr = std::make_shared<IL::ErrorExpression>(error);
+    return std::static_pointer_cast<Expression>(errorExpr);
+}
+
+template <class T>
+inline IL::ExpressionPointer AsTyped(std::shared_ptr<T> val)
+{
+    return std::static_pointer_cast<Expression>(val);
+}
+
+bool IsTypedExpression(IL::ExpressionPtr expr)
+{
+    if (expr == nullptr)
+        return false;
+
+    auto type = expr->GetType();
+    switch (type)
+    {
+    case IL::OPERAND:
+    case IL::ASSIGNMENT:
+    case IL::FUNC_CALL:
+    case IL::VARIABLE:
+    case IL::CONSTANT:
+        return true;
+    case IL::ERROR:
+    case IL::DECLARATION:
+    default:
+        return false;
+    }
+}
+
+bool IsConstant(const IL::Token& token)
+{
+    if (token.type != IL::UNKNOWN)
+        return false;
+
+    if (val.Size() == 0)
+        return false;
+
+    char c = val[0];
+    return (c >= '0' && c <= '9');
+}
+
+/********** PARSE SUBEXPRESSION ***************************/
+
+IL::ExpressionPtr Builder::ParseSubExpression(IL::ExpressionPtr lhs)
+{
+    Load(1);
+    const Token& tok = tokenizer.Current();
+
+    switch (tok.type)
+    {
+        case token::SEMICOLON:
+            tokenizer.Consume();
+            return lhs;
+        case token::PLUS:
+            return DoOperandExpression(IL::PLUS, lhs);
+        case token::MINUS:
+            return DoOperandExpression(IL::MINUS, lhs);
+        case token::STAR:
+            return DoOperandExpression(IL::TIMES, lhs);
+        case token::SLASH:
+            return DoOperandExpression(IL::DIVIDES, lhs);
+        case token::EQUAL:
+            return DoAssignmentExpression(lhs);
+        case UNKNOWN:
+        {
+            if (IsConstant(tok))
+                return DoConstantExpression(lhs);
+            Load(2);
+            token::Token& tok2 = tokenizer.At(1);
+            if (tok2.type == token::UNKNOWN)
+                return DoDeclarationExpression(tok, tok2, lhs);
+            return DoVariableExpression(tok, lhs);
+        }
+        default:
+            return ErrorExpression("FATAL: unknown token.");
+    }
+    return ErrorExpression("FATAL: should never be reached");
+}
+
+IL::ExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs)
+{
+    tokenizer.Consume();
+
+    if (!IsTypedExpression(lhs))
+        return ErrorExpression("Unexpexted token '+'.");
+
+    IL::ExpressionPtr rhs = ParseSubExpression(nullptr);
+    if (!IsTypedExpression(rhs))
+        return ErrorExpression("Invalid second argument for '+'.");
+
+    TypedExpressionPtr typedL = AsTyped(lhs);
+    TypedExpressionPtr typedR = AsTyped(rhs);
+
+    auto expr = std::make_shared<OperandExpression>();
+    expr->type = optype;
+    expr->left = typedL;
+    expr->right = typedR;
+    return std::static_pointer_cast<IL::Expression>(expr);
+}
+
+IL::ExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lhs)
+{
+    tokenizer.Consume();
+
+    if (lhs == nullptr)
+        return MakeError("Unexpected token '='");
+
+    if (lhs->GetType() != IL::VARIABLE)
+        return MakeError("Invalid assignment, can only assign to a variable");
+    auto variable = std::static_pointer_cast<VariableExpression>(lhs);
+
+    auto rhs = ParseSubExpression(nullptr);
+    if (!IsTypedExpression(rhs))
+        return MakeError("Invalid assignment value.");
+
+    auto assignment = std::make_shared<AssignmentExpression>();
+    assignment->variable = variable;
+    assignment->value = AsTyped(rhs);
+}
+
+IL::ExpressionPtr Builder::DoDeclarationExpression(token::Token& typeTok, token::Token& varTok, IL::ExpressionPtr lhs)
+{
+
+}
+
+IL::ExpressionPtr Builder::DoVariableExpression(token::Token& varTok, IL::ExpressionPtr lhs)
+{
+
+}
+
+

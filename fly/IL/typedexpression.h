@@ -12,5 +12,7 @@ namespace IL
     public:
         TypePtr GetILType() const = 0;
     };
+
+    using TypedExpressionPtr = std::shared_ptr<TypedExpression>;
 }
 }

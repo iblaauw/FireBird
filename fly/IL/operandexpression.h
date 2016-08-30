@@ -18,7 +18,7 @@ namespace IL
     {
     public:
         OperandType type;
-        ExpressionPtr left, right;
+        TypedExpressionPtr left, right;
         TypePtr resultingType;
 
         ExpressionType GetType() override const { return OPERAND; }

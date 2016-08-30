@@ -10,7 +10,7 @@ namespace IL
     class AssignmentExpression : public Expression
     {
     public:
-        VariablePtr variable;
+        VariableExpressionPtr variable;
         TypedExpression value;
 
         ExpressionType GetType() const override { return ASSIGNMENT; }
