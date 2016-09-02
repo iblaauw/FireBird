@@ -13,8 +13,7 @@ using Token = token::Token;
 
 inline IL::ExpressionPtr MakeError(const std::string& error)
 {
-    auto errorExpr = std::make_shared<IL::ErrorExpression>(error);
-    return std::static_pointer_cast<IL::Expression>(errorExpr);
+    return IL::CreateError<IL::Expression>(error);
 }
 
 template <class T>
@@ -441,7 +440,8 @@ IL::ExpressionPtr Builder::ParseSubExpression(IL::ExpressionPtr lhs)
             return DoVariableExpression(tok, lhs);
         }
         default:
-            return MakeError("FATAL: unknown token.");
+            tokenizer.Consume();
+            return MakeError("Unexpected token '"+ tok.ToString() +"'");
     }
     return MakeError("FATAL: should never be reached");
 }
@@ -452,9 +452,12 @@ IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL
     tokenizer.Consume();
 
     if (!IsTypedExpression(lhs))
-        return IL::CreateError<IL::OperandExpression>("Unexpexted token '+'.");
+        return IL::CreateError<IL::OperandExpression>("Unexpected token '+'.");
 
     IL::ExpressionPtr rhs = ParseSubExpression(nullptr);
+    if (rhs->GetType() == IL::ERROR)
+        return IL::RecastError<IL::OperandExpression>(rhs);
+
     if (!IsTypedExpression(rhs))
         return IL::CreateError<IL::OperandExpression>("Invalid second argument for '+'.");
 
@@ -483,14 +486,8 @@ IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lh
 
     auto rhs = ParseSubExpression(nullptr);
 
-    std::cout << "=-= Begin debug to delete thing =-=" << std::endl;
-    IL::TreePrinter printer;
-    rhs->DebugPrint(printer);
-    printer.PrintLine();
-    std::cout << "=-= END =-=" << std::endl;
-
-//    if (rhs->GetType() == IL::ERROR)
-//        return rhs; // TODO: create a way to get the error message!
+    if (rhs->GetType() == IL::ERROR)
+        return IL::RecastError<IL::AssignmentExpression>(rhs);
 
     if (!IsTypedExpression(rhs))
         return IL::CreateError<IL::AssignmentExpression>("Invalid assignment value.");
