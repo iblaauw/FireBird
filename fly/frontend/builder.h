@@ -1,5 +1,6 @@
 #pragma once
 
+#include "contextmanager.h"
 #include "tokenizer.h"
 
 #include "expression.h"
@@ -21,6 +22,7 @@ namespace frontend
     class Builder
     {
     private:
+        ContextManager contextManager;
         firefly::token::Tokenizer& tokenizer;
         std::vector<firefly::IL::FunctionExpressionPtr> functionSet;
     public:

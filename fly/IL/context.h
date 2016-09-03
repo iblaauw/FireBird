@@ -49,6 +49,7 @@ namespace IL
         ContextPtr CreateChild();
 
         bool IsNameUsed(StringView name);
+        void TypeOfName(StringView name, bool* variable, bool* func, bool* type);
     };
 
 }

@@ -92,22 +92,40 @@ ContextPtr Context::CreateChild()
 
 bool Context::IsNameUsed(StringView name)
 {
+    bool var,func,type;
+    TypeOfName(name, &var, &func, &type);
+    return var || func || type;
+}
+
+void Context::TypeOfName(StringView name, bool* variable, bool* func, bool* type)
+{
+    *variable = *func = *type = false;
+
     auto iter = variables.find(name);
     if (iter != variables.end())
-        return true;
+    {
+        *variable = true;
+        return;
+    }
 
     auto iter2 = functions.find(name);
     if (iter2 != functions.end())
-        return true;
+    {
+        *func = true;
+        return;
+    }
 
     auto iter3 = types.find(name);
     if (iter3 != types.end())
-        return true;
+    {
+        *type = true;
+        return;
+    }
 
     if (parent == nullptr)
-        return false;
+        return;
 
-    return parent->IsNameUsed(name);
+    return parent->TypeOfName(name, variable, func, type);
 }
 
 

@@ -469,7 +469,7 @@ IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL
     expr->left = typedL;
     expr->right = typedR;
 
-    return expr;
+    return contextManager.Process(expr);
 }
 
 IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lhs)
@@ -496,7 +496,7 @@ IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lh
     assignment->variable = variable;
     assignment->value = AsTyped(rhs);
 
-    return assignment;
+    return contextManager.Process(assignment);
 }
 
 IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs)
@@ -513,7 +513,7 @@ IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(const token::Token
     expr->type = typeTok.val;
     expr->name = varTok.val;
 
-    return expr;
+    return contextManager.Process(expr);
 }
 
 IL::VariableExpressionPtr Builder::DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs)
@@ -524,8 +524,8 @@ IL::VariableExpressionPtr Builder::DoVariableExpression(const token::Token& varT
         return IL::CreateError<IL::VariableExpression>("Unexpected token '" + varTok.ToString() + "'. Expected ';'.");
 
     auto expr = std::make_shared<IL::VariableExpression>();
-    expr->variable = varTok.val;
-    return expr;
+    expr->name = varTok.val;
+    return contextManager.Process(expr);
 }
 
 IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
@@ -545,7 +545,7 @@ IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok
     auto expr = std::make_shared<IL::ConstantExpression>();
     expr->constant = raw;
 
-    return expr;
+    return contextManager.Process(expr);
 }
 
 
