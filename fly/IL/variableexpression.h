@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ilexception.h"
 #include "typedexpression.h"
 #include "variable.h"
 

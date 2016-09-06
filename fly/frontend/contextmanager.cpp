@@ -2,7 +2,8 @@
 
 #include "frontendexception.h"
 
-using namespace firefly::frontend;
+using namespace firefly;
+using ContextManager = firefly::frontend::ContextManager;
 
 static void InitBuiltins()
 {
@@ -16,7 +17,7 @@ static void InitBuiltins()
 
 ContextManager::ContextManager()
 {
-    currentContext = IL::Context::TopLevel();
+    currentContext = IL::Context::GetTopLevel();
     InitBuiltins();
 }
 
@@ -25,7 +26,7 @@ bool ContextManager::FillVariable(StringView name, IL::VariablePtr* outVariable,
     bool success = currentContext->TryGetVariable(name, outVariable);
     if (!success)
     {
-        *outError = "Unknown variable '" + name + "'.";
+        *outError = "Unknown variable '" + static_cast<std::string>(name) + "'.";
     }
     return success;
 }
@@ -35,15 +36,16 @@ bool ContextManager::FillType(StringView name, IL::TypePtr* outType, std::string
     bool success = currentContext->TryGetType(name, outType);
     if (!success)
     {
-        *outError = "Uknown type '" + name + "'.";
+        *outError = "Uknown type '" + static_cast<std::string>(name) + "'.";
     }
+    return success;
 }
 
 bool ContextManager::AddVariable(StringView name, IL::TypePtr type, std::string* outError)
 {
     if (currentContext->IsNameUsed(name))
     {
-        *outError = "The name '"+ name +"' is already used.";
+        *outError = "The name '"+ static_cast<std::string>(name) +"' is already used.";
         return false;
     }
 
