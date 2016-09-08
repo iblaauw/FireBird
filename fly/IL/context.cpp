@@ -58,6 +58,7 @@ bool Context::TryGetType(StringView name, TypePtr* outVal)
 void Context::AddVariable(VariablePtr variable)
 {
     StringView name = variable->name;
+    std::cout << "*** Adding variable: " << name << std::endl;
     if (IsNameUsed(name))
         throw ILException("Cannot declare variable, the name '" + static_cast<std::string>(name) + "' is already being used.");
 

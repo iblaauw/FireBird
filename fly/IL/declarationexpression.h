@@ -1,7 +1,7 @@
 #pragma once
 
 #include "expression.h"
-#include "type.h"
+#include "typeexpression.h"
 
 namespace firefly
 {
@@ -10,8 +10,9 @@ namespace IL
     class DeclarationExpression : public Expression
     {
     public:
-        StringView type;
+        TypeExpressionPtr type;
         StringView name;
+        VariablePtr variable;
 
         ExpressionType GetType() const override { return DECLARATION; }
         void DebugPrint(TreePrinter& printer) const override;

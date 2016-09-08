@@ -47,6 +47,7 @@ bool IsTypedExpression(IL::ExpressionPtr expr)
     case IL::FUNC_CALL:
     case IL::VARIABLE:
     case IL::CONSTANT:
+    case IL::TYPE:
         return true;
     case IL::ERROR:
     case IL::DECLARATION:
@@ -547,5 +548,441 @@ IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok
 
     return contextManager.Process(expr);
 }
+
+
+IL::ExpressionPtr Builder::DoUnknown(const token::Token& cTok, IL::ExpressionPtr lhs)
+{
+    assert(cTok.type == token::UNKNOWN);
+
+    bool var, func, type;
+    contextManager.Current().TypeOfName(cTok.val, &var, &func, &type);
+
+    if (var)
+    {
+        if (lhs == nullptr)
+            return DoVariableExpression(cTok, lhs);
+        if (lhs->GetType() == 
+    }
+
+    if (func)
+        return IL::CreateError<IL::ExpressionPtr>("Function calls not implemented yet.");
+
+    if (type)
+        return DoTypeExpression(cTok, lhs);
+
+    return IL::CreateError<IL::Expression>("Unknown name '"+ static_cast<std::string>(cTok.val) +"'.");
+}
+
+IL::TypeExpressionPtr Builder::DoTypeExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
+{
+    assert(cTok.type == token::UNKNOWN);
+
+    if (lhs == nullptr)
+        return IL::CreateError<TypeExpression>("Unexpected token '"+ cTok.ToString() + "'.");
+
+    
+}
+
+
+
+
+
+
+/*******************NEW*********************************/
+
+//// UTILS
+
+template <class T>
+std::shared_ptr<T> ErrorUnexpected(const token::Token& tok)
+{
+    return IL::CreateError<T>("Unexpected token '"+tok.ToString()+"'.");
+}
+
+template <class T>
+std::shared_ptr<T> ErrorExpecting(const token::Token& tok, const std::string& expecting)
+{
+    return IL::CreateError<T>("Unexpected token '"+tok.ToString()+"'. Expecting ");
+}
+
+template <class T, class U>
+std::shared_ptr<T> Upcast(std::shared_ptr<U> val)
+{
+    return std::static_pointer_cast<T>(val);
+}
+
+template <class T, class U>
+std::shared_ptr<T> Downcast(std::shared_ptr<U> val)
+{
+    auto casted = std::dynamic_pointer_cast<T>(val);
+    if (casted == nullptr)
+        throw FrontendException("INTERNAL ERROR: downcast failed.");
+    return casted;
+}
+
+bool IsConst(StringView val)
+{
+    // TODO: add much more rigorous checks here
+    assert(val.Size() != 0);
+    if (val[0] <= '9' && val[0] >= '0')
+        return true;
+    return false;
+}
+
+#define REQUIRE_OR_RETURN(required, type, expecting) \
+do { \
+if (!RequireSpecific( required )) { \
+    auto& macrotok = tokenizer.Current(); \
+    tokenizer.Consume(); \
+    return ErrorExpected< type >(macrotok, (expecting)); \
+} \
+while (false)
+
+bool IsStatement(IL::ExpressionPtr expr)
+{
+    if (expr == nullptr)
+        return false;
+    auto type = expr->GetType();
+    return type == IL::DECLARATION || type == IL::ASSIGNMENT || type == IL::FUNC_CALL || type == IL::ERROR;
+}
+
+bool IsTyped(IL::ExpressionPtr expr)
+{
+    if (expr == nullptr)
+        return false;
+    auto type = expr->GetType();
+    return type == IL::OPERAND || type == IL::VARIABLE || type == IL::CONSTANT || type == IL::ERROR;
+}
+
+//// Process Functions
+
+IL::ExpressionPtr Process(IL::ExpressionPtr lhs)
+{
+    Load(1);
+    const token::Token& tok = tokenizer.Current();
+    tokenizer.Consume();
+    switch (tok.type)
+    {
+        case token::UNKNOWN:
+        {
+            IL::ExpressionPtr rhs = UnknownToExpression(tok.val);
+            return HandleUnknown(lhs, rhs);
+        }
+        case token::PLUS:
+            return HandleOperand(IL::PLUS, lhs);
+        case token::MINUS:
+            return HandleOperand(IL::MINUS, lhs);
+        case token::STAR:
+            return HandleOperand(IL::TIMES, lhs);
+        case token::SLASH:
+            return HandleOperand(IL::DIVIDE, lhs);
+        case token::EQUALS:
+        {
+            return HandleAssignment(lhs);
+        }
+        default:
+            return ErrorUnexpected<IL::Expression>(tok);
+    }
+    return ErrorUnexpected<IL::Expression>(tok);
+}
+
+IL::ExpressionPtr UnknownToExpression(StringView val)
+{
+    if (IsConst(val))
+        return Upcast<IL::Expression>( factory.CreateConstant(val) );
+
+    bool var, func, type;
+    contextManager.TypeOfName(val, &var, &func, &type);
+
+    if (var)
+        return Upcast<IL::Expression>( factory.CreateVariable(val) );
+
+    if (func)
+        return Upcast<IL::Expression>( factory.CreateFunction(val) );
+
+    if (type)
+        return Upcast<IL::Expression>( factory.CreateType(val) );
+
+    return Upcast<IL::Expression>( factory.CreateIdentifier(val) );
+}
+
+IL::ExpressionPtr HandleUnknown(IL::ExpressionPtr lhs, IL::ExpressionPtr rhs)
+{
+    assert(rhs != nullptr);
+    if (lhs == nullptr)
+        return rhs;
+
+    IL::ExpressionType ltype = lhs->GetType();
+    IL::ExpressionType rtype = rhs->GetType();
+
+    if (ltype == IL::TYPE && rtype == IL::VARIABLE)
+    {
+        return CreateError<IL::Expression>("Name already used.");
+    }
+
+    if (rtype == IL::FUNCTION)
+    {
+        return CreateError<IL::Expression>("Function calls are not implemented.");
+    }
+
+    if (ltype == IL::TYPE && rtype == IL::IDENTIFIER)
+    {
+        return factory.CreateDeclaration(lhs, rhs);
+    }
+
+    return CreateError<IL::Expression>("Unexpected identifier.");
+}
+
+IL::ExpressionPtr HandleOperand(IL::OperandType type, IL::ExpressionPtr lhs)
+{
+    if (!IsTyped(lhs))
+        return IL::CreateError<IL::Expression>("Unexpected operator.");
+
+    IL::TypedExpressionPtr ltyped = Downcast<IL::TypedExpression>(lhs);
+    IL::TypedExpressionPtr rhs = RequireTyped();
+
+    return Upcast<IL::Expression>( factory.CreateOperand(type, ltyped, rhs) );
+}
+
+IL::ExpressionPtr HandleAssignment(IL::ExpressionPtr lhs)
+{
+    if (lhs == nullptr || lhs->GetType() != IL::VARIABLE)
+        return IL::CreateError<IL::Expression>("Unexpected '=', can only assign to a variable.");
+
+    IL::VariableExpressionPtr variable = Downcast<IL::VariableExpression>(lhs);
+    IL::TypedExpressionPtr rhs = RequireTyped();
+    return Upcast<IL::Expression>( factory.CreateAssignment(variable, rhs) );
+}
+
+// Take in a token and previously found typed expression. If the token can't be a
+//  typedexpression, then returns nullptr.
+IL::TypedExpressionPtr ProcessTyped(const token::Token& tok, IL::TypedExpressionPtr lhs)
+{
+    switch (tok.type)
+    {
+        case token::UNKNOWN:
+        {
+            if (lhs != nullptr)
+                return nullptr;
+
+            bool var, func, type;
+            contextManager.Current().FindType(tok.val, &var, &func, &type);
+            if (var)
+            {
+                auto variable = factory.CreateVariable(tok.val);
+                return Upcast<IL::TypedExpression>(variable);
+            }
+
+            return nullptr;
+        }
+        case token::PLUS:
+            return HandleTypedOperand(IL::PLUS, lhs);
+        case token::MINUS:
+            return HandleTypedOperand(IL::MINUS, lhs);
+        case token::STAR:
+            return HandleTypedOperand(IL::TIMES, lhs);
+        case token::SLASH:
+            return HandleTypedOperand(IL::DIVIDES, lhs);
+        default:
+            return nullptr;
+    }
+}
+
+IL::TypedExpressionPtr HandleTypedOperand(IL::ExpressionType type, IL::TypedExpressionPtr lhs)
+{
+    if (lhs == nullptr)
+        return IL::CreateError<IL::TypedExpression>("Unexpected operator.");
+
+    IL::TypedExpressionPtr rhs = RequireTyped();
+    return Upcast<IL::TypedExpression>( factory.CreateOperand(type, lhs, rhs) );
+}
+
+
+
+
+//// Require Functions
+
+// Requires a single token of a particular type
+// Only consumes the token if it was expected.
+bool RequireSpecific(token::TokenType tokentype)
+{
+    assert(tokentype != token::UNKNOWN);
+    Load(1);
+    const token::Token& tok = tokenizer.Current();
+    if (tok.type != tokentype)
+        return false;
+
+    tokenizer.Consume();
+    return true;
+}
+
+IL::TypeExpressionPtr RequireType()
+{
+    Load(1);
+    const token::Token& tok = tokenizer.Current();
+    tokenizer.Consume();
+    if (tok.type != UNKNOWN)
+        return ErrorExpected<IL::TypeExpression>(tok, "a known type.");
+
+    return factory.CreateType(tok.va);
+}
+
+IL::IdentifierExpressionPtr RequireIdentifier()
+{
+    Load(1);
+    const token::Token& tok = tokenizer.Current();
+    tokenizer.Consume();
+    if (tok.type != UNKNOWN)
+        return ErrorExpected<IL::IdentifierExpression>(tok, "an identifier.");
+
+    return factory.CreateIdentifier(tok.val);
+}
+
+IL::DeclarationExpressionPtr RequireDeclaration()
+{
+    auto type = RequireType();
+    auto id = RequireIdentifier();
+    return factory.CreateDeclaration(type, id);
+}
+
+IL::ExpressionPtr RequireStatement()
+{
+    IL::ExpressionPtr current = nullptr;
+    while (true)
+    {
+        Load(1);
+        const auto& tok = tokenizer.Current();
+        if (tok.type == token::SEMICOLON)
+        {
+            tokenizer.Consume();
+            if (current == nullptr)
+                return ErrorUnexpected<IL::Expression>(tok);
+            if (!IsStatement(current))
+                return IL::CreateError("A statement can only be either a declaration, assignment, or function call.");
+            return current;
+        }
+
+        current = Process(current);
+
+        // Fast pass errors back up.
+        if (current != nullptr && current->GetType() == IL::ERROR)
+            return current;
+    }
+}
+
+IL::TypedExpressionPtr RequireTyped()
+{
+    IL::TypedExpressionPtr current = nullptr;
+    while (true)
+    {
+        Load(1);
+        const token::Token& tok = tokenizer.Current();
+
+        auto next = ProcessTyped(tok, current);
+
+        if (next == nullptr)
+        {
+            if (current == nullptr)
+            {
+                tokenizer.Consume();
+                return ErrorUnexpected<IL::TypedExpression>(tok);
+            }
+            return current;
+        }
+
+        tokenizer.Consume();
+        current = next;
+    }
+}
+
+IL::SubContextExpressionPtr RequireSubContext()
+{
+    REQUIRE_OR_RETURN(token::BRACKET_OPEN, IL::SubContextExpression, "'{'");
+
+    IL::SubContextExpressionPtr subcontext = factory.CreateSubContext();
+
+    while (true)
+    {
+        Load(1);
+        if (tokenizer.Current().type == token::BRACKET_CLOSE)
+        {
+            tokenizer.Consume();
+            break;
+        }
+
+        IL::ExpressionPtr statement = RequireStatement();
+        factory.AddStatement(subcontext, statement);
+    }
+
+    REQUIRE_OR_RETURN(token::BRACKET_CLOSE, IL::SubContextExpression, "'}'");
+
+    return subcontext;
+}
+
+IL::FuncDeclArgsExpressionPtr RequireFuncDeclArgs()
+{
+    REQUIRE_OR_RETURN(token::PAREN_OPEN, IL::FuncDeclArgsExpression, "'('");
+
+    IL::FuncDeclArgsExpressionPtr funcArgs = factory.CreateFuncDeclArgs();
+
+    bool first = true;
+    while (true)
+    {
+        Load(1);
+        auto tok = tokenizer.Current();
+
+        if (tok.type == token::PAREN_CLOSE)
+        {
+            tokenizer.Consume();
+            break;
+        }
+
+        // Is a comma needed before arg?
+        if (first)
+        {
+            first = false;
+        }
+        else
+        {
+            REQUIRE_OR_RETURN(token::COMMA, IL::FuncDelcArgsExpression, "','");
+        }
+
+        IL::DeclarationExpressionPtr decl = RequireDeclaration();
+        factory.AddFuncDeclArg(funcArgs, decl);
+    }
+
+    REQUIRE_OR_RETURN(token::PAREN_CLOSE, IL::FuncDeclArgsExpression, "')'");
+}
+
+IL::FunctionDeclarationExpressionPtr RequireFunctionDeclaration()
+{
+    auto decl = RequireDeclaration();
+    auto args = RequireFunctionDeclArgs();
+    auto subcontext = RequireSubContext();
+
+    return factory.CreateFunctionDeclaration(decl, args, subcontext);
+}
+
+void Builder::Build()
+{
+    while (true)
+    {
+        if (tokenizer.size() == 0)
+        {
+            bool success = tokenizer.Advance();
+            if (!success && tokenizer.size() == 0)
+                return;
+        }
+
+        std::cout << "Finding function..." << std::endl;
+
+        // Only functions are allowed at the top level at the moment
+        IL::FunctionDeclarationExpressionPtr func = RequireFunction();
+        functionSet.push_back(func);
+        //currentContext->AddFunction(func);
+    }
+
+}
+
+
 
 

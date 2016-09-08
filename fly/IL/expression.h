@@ -18,7 +18,8 @@ namespace IL
         FUNC_CALL,
         VARIABLE,
         CONSTANT,
-        FUNCTION
+        FUNCTION,
+        TYPE,
     };
 
     class Expression

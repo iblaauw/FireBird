@@ -58,37 +58,34 @@ bool ContextManager::AddVariable(StringView name, IL::TypePtr type, std::string*
     return true;
 }
 
-//template <class T>
-//std::shared_ptr<T> ContextManager::DoProcess(std::shared_ptr<T> val)
-//{
-//    return val;
-//}
+template <>
+IL::VariableExpressionPtr ContextManager::DoProcess(IL::VariableExpressionPtr val)
+{
+    std::cout << "*** Processing var " << val->name << std::endl;
 
-    template <>
-    IL::VariableExpressionPtr ContextManager::DoProcess(IL::VariableExpressionPtr val)
-    {
-        std::string errormessage;
-        bool success = FillVariable(val->name, &(val->variable), &errormessage);
-        if (!success)
-            return IL::CreateError<IL::VariableExpression>(errormessage);
+    std::string errormessage;
+    bool success = FillVariable(val->name, &(val->variable), &errormessage);
+    std::cout << "*** \tsuccess: " << success << std::endl;
+    if (!success)
+        return IL::CreateError<IL::VariableExpression>(errormessage);
 
-        return val;
-    }
+    return val;
+}
 
-    template<>
-    IL::DeclarationExpressionPtr ContextManager::DoProcess(IL::DeclarationExpressionPtr val)
-    {
-        IL::TypePtr type;
-        std::string errormessage;
-        bool success = FillType(val->type, &type, &errormessage);
-        if (!success)
-            return IL::CreateError<IL::DeclarationExpression>(errormessage);
+template<>
+IL::DeclarationExpressionPtr ContextManager::DoProcess(IL::DeclarationExpressionPtr val)
+{
+    IL::TypePtr type;
+    std::string errormessage;
+    bool success = FillType(val->type, &type, &errormessage);
+    if (!success)
+        return IL::CreateError<IL::DeclarationExpression>(errormessage);
 
-        std::string errormessage2;
-        success = AddVariable(val->name, type, &errormessage2);
-        if (!success)
-            return IL::CreateError<IL::DeclarationExpression>(errormessage2);
+    std::string errormessage2;
+    success = AddVariable(val->name, type, &errormessage2);
+    if (!success)
+        return IL::CreateError<IL::DeclarationExpression>(errormessage2);
 
-        return val;
-    }
+    return val;
+}
 

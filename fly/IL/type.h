@@ -11,8 +11,10 @@ namespace IL
     {
     public:
         StringView value;
-        Type(StringView val): value(val) {}
+        Type(StringView val) : value(val), numBytes(4) {}
+
         // This will become more complicated
+        int numBytes;
     };
 
     using TypePtr = std::shared_ptr<Type>;

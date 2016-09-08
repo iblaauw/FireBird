@@ -18,9 +18,9 @@ namespace IL
         TypePtr GetILType() const override
         {
             if (variable == nullptr) throw ILException("FATAL: variable hasn't been context processed.");
-            return variable->type; 
+            return variable->type;
         }
-        void DebugPrint(TreePrinter& printer) const override { printer.Print(variable); }
+        void DebugPrint(TreePrinter& printer) const override { printer.Print(name); }
 
     };
 
