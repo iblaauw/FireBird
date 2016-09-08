@@ -3,585 +3,448 @@
 #include "hiddenerror.h"
 
 #include <iostream>
+#include <cassert>
 
 using namespace firefly;
 
 using Builder = frontend::Builder;
 using Token = token::Token;
 
-/*********** HELPERS **********************************/
-
-inline IL::ExpressionPtr MakeError(const std::string& error)
-{
-    return IL::CreateError<IL::Expression>(error);
-}
-
-template <class T>
-inline IL::TypedExpressionPtr AsTyped(std::shared_ptr<T>& val)
-{
-    return std::static_pointer_cast<IL::TypedExpression>(val);
-}
-
-template <class T>
-inline IL::ExpressionPtr AsExpression(std::shared_ptr<T>& val)
-{
-    return std::static_pointer_cast<IL::Expression>(val);
-}
-
-template <class T>
-inline IL::ExpressionPtr AsExpression(std::shared_ptr<T>&& val)
-{
-    return std::static_pointer_cast<IL::Expression>(std::forward<std::shared_ptr<T>>(val));
-}
-
-bool IsTypedExpression(IL::ExpressionPtr expr)
-{
-    if (expr == nullptr)
-        return false;
-
-    auto type = expr->GetType();
-    switch (type)
-    {
-    case IL::OPERAND:
-    case IL::ASSIGNMENT:
-    case IL::FUNC_CALL:
-    case IL::VARIABLE:
-    case IL::CONSTANT:
-    case IL::TYPE:
-        return true;
-    case IL::ERROR:
-    case IL::DECLARATION:
-    default:
-        return false;
-    }
-}
-
-bool IsNumChar(char c)
-{
-    return c >= '0' && c <= '9';
-}
-
-bool IsConstant(const token::Token& token)
-{
-    if (token.type != token::UNKNOWN)
-        return false;
-
-    StringView val = token.val;
-    if (val.Size() == 0)
-        return false;
-
-    char c = val[0];
-    return IsNumChar(c);
-}
-
-inline bool IsTopLevel(const IL::ExpressionPtr& expression)
-{
-    auto t = expression->GetType();
-    return t == IL::DECLARATION || t == IL::ASSIGNMENT || t == IL::FUNC_CALL || t == IL::ERROR;
-}
-
-/**************** Builder *************/
-
-Builder::Builder(token::Tokenizer& tokenizer)
-    : tokenizer(tokenizer), functionSet()
-{
-    //currentContext = IL::Context::GetTopLevel();
-    //InitBuiltins();
-}
-
-void Builder::Build()
-{
-    while (true)
-    {
-        if (tokenizer.size() == 0)
-        {
-            bool success = tokenizer.Advance();
-            if (!success && tokenizer.size() == 0)
-                return;
-        }
-
-        std::cout << "Finding function..." << std::endl;
-
-        // Only functions are allowed at the top level at the moment
-        IL::FunctionExpressionPtr func = ParseFunction();
-        functionSet.push_back(func);
-        //currentContext->AddFunction(func);
-    }
-}
-
-void Builder::DebugPrint() const
-{
-    IL::TreePrinter printer;
-    printer.Print("=== Begin Tree Output ===");
-    printer.PrintLine();
-
-    for (auto& func : functionSet)
-    {
-        func->DebugPrint(printer);
-        printer.PrintLine();
-    }
-}
-
-//void Builder::InitBuiltins()
+///*********** HELPERS **********************************/
+//
+//inline IL::ExpressionPtr MakeError(const std::string& error)
 //{
-//    // Builtin types
-//    IL::TypePtr intType = std::make_shared<IL::Type>("int");
-//    IL::TypePtr voidType = std::make_shared<IL::Type>("void");
-//
-//    IL::ContextPtr context = IL::Context::GetTopLevel();
-//    context->AddType(intType);
-//    context->AddType(voidType);
-//}
-
-void Builder::Load(int amount)
-{
-    if (tokenizer.size() >= amount)
-        return;
-
-    while (tokenizer.size() < amount)
-    {
-        bool success = tokenizer.Advance();
-        if (!success)
-            throw FrontEndException("Unexpected end of file");
-    }
-}
-
-/************* Parse Function ********************/
-
-IL::FunctionExpressionPtr Builder::ParseFunction()
-{
-    std::cout << "Parsing Function" << std::endl;
-    IL::FunctionExpressionPtr func = ParseFunctionSig();
-    if (func->GetType() == IL::ERROR)
-        return func;
-
-    ParseFunctionArgs(func);
-    ParseExpressionSet(func->expressions);
-
-    return func;
-}
-
-IL::FunctionExpressionPtr Builder::ParseFunctionSig()
-{
-    Load(3);
-    const Token& tok1 = tokenizer.At(0);
-    const Token& tok2 = tokenizer.At(1);
-    const Token& tok3 = tokenizer.At(2);
-
-    tokenizer.Consume();
-    tokenizer.Consume();
-    tokenizer.Consume();
-
-    if (tok1.type != token::UNKNOWN)
-        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok1.ToString() + "', expected function definition.");
-    if (tok2.type != token::UNKNOWN)
-        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok2.ToString() + "', expected function definition.");
-    if (tok3.type != token::PAREN_OPEN)
-        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok3.ToString() + "', expected '(' for function definition.");
-
-    auto expr = std::make_shared<IL::FunctionExpression>();
-    expr->returnType = tok1.val;
-    expr->name = tok2.val;
-
-    return expr;
-}
-
-void Builder::ParseFunctionArgs(IL::FunctionExpressionPtr func)
-{
-    std::cout << "Parsing func args" << std::endl;
-
-    Load(1);
-    const Token& firstTok = tokenizer.Current();
-    if (firstTok.type == token::PAREN_CLOSE)
-    {
-        tokenizer.Consume();
-        return;
-    }
-
-    while (true)
-    {
-        Load(2);
-        const Token& tok = tokenizer.Current();
-        const Token& tok2 = tokenizer.At(1);
-
-        auto declExpr = DoDeclarationExpression(tok, tok2, nullptr); // DoDeclarationExpression consumes the 2 tokens
-        func->args.push_back(declExpr);
-
-        Load(1);
-        const Token& tok3 = tokenizer.Current();
-        if (tok3.type == token::PAREN_CLOSE)
-        {
-            tokenizer.Consume();
-            break;
-        }
-
-        // If it's not a close paren, it must be a comma
-        if (tok3.type != token::COMMA)
-        {
-            auto error = IL::CreateError<IL::DeclarationExpression>("Unexpected token '" + tok3.ToString() + "'. Expected '('.");
-            func->args.push_back(error);
-            tokenizer.Consume();
-            break;
-        }
-
-        // Eat comma
-        tokenizer.Consume();
-    }
-}
-
-void Builder::ParseExpressionSet(std::vector<IL::ExpressionPtr>& expressions)
-{
-    std::cout << "Parsing Function Expressions..." << std::endl;
-
-    expressions.clear();
-
-    Load(1);
-    const Token& starttok = tokenizer.Current();
-    if (starttok.type != token::BRACKET_OPEN)
-    {
-        expressions.push_back(MakeError("Unexpected token '" + starttok.ToString() + "'. Expected '{'."));
-        return;
-    }
-
-    // Eat '{'
-    tokenizer.Consume();
-
-    while (true)
-    {
-        Load(1);
-        auto& tok = tokenizer.Current();
-        if (tok.type == token::BRACKET_CLOSE)
-        {
-            tokenizer.Consume();
-            break;
-        }
-
-        IL::ExpressionPtr expr = ParseTopExpression();
-        expressions.push_back(expr);
-    }
-}
-
-/*************** OLD ************/
-
-
-//IL::TypePtr Builder::ParseType()
-//{
-//    Load(1);
-//    const Token& tok = tokenizer.Current();
-//    if (tok.type != token::UNKNOWN)
-//        throw FrontEndException("Expected type", tok);
-//
-//    StringView typeName = tok.val;
-//
-//    IL::TypePtr type;
-//    bool success = currentContext->TryGetType(typeName, &type);
-//    if (!success)
-//        throw FrontEndException("Unknown type.", tok);
-//
-//    tokenizer.Consume();
-//
-//    return type;
+//    return IL::CreateError<IL::Expression>(error);
 //}
 //
-//StringView Builder::ParseIdentifier()
+//template <class T>
+//inline IL::TypedExpressionPtr AsTyped(std::shared_ptr<T>& val)
 //{
-//    Load(1);
-//    const Token& tok = tokenizer.Current();
-//    if (tok.type != token::UNKNOWN)
-//        throw FrontEndException("Expected type", tok);
-//
-//    tokenizer.Consume();
-//
-//    return tok.val;
+//    return std::static_pointer_cast<IL::TypedExpression>(val);
 //}
 //
-//void Builder::ParseSpecific(token::TokenType type)
+//template <class T>
+//inline IL::ExpressionPtr AsExpression(std::shared_ptr<T>& val)
 //{
-//    Load(1);
-//    const Token& tok = tokenizer.Current();
-//    if (tok.type != type)
-//        throw FrontEndException("Expected ''", tok);
-//
-//    tokenizer.Consume();
+//    return std::static_pointer_cast<IL::Expression>(val);
 //}
 //
-//IL::FunctionPtr Builder::ParseFunction()
+//template <class T>
+//inline IL::ExpressionPtr AsExpression(std::shared_ptr<T>&& val)
 //{
-//    IL::ContextPtr funcContext = currentContext->CreateChild();
-//    IL::FunctionSignaturePtr sig = ParseFuncSig(funcContext);
+//    return std::static_pointer_cast<IL::Expression>(std::forward<std::shared_ptr<T>>(val));
+//}
 //
-//    IL::FunctionPtr func = std::make_shared<IL::Function>(sig, funcContext);
-//    func->functionContext = funcContext;
-//    func->signature = sig;
+//bool IsTypedExpression(IL::ExpressionPtr expr)
+//{
+//    if (expr == nullptr)
+//        return false;
 //
-//    ParseSpecific(token::BRACKET_OPEN);
-//    IL::ContextPtr oldContext = currentContext;
-//    currentContext = funcContext;
+//    auto type = expr->GetType();
+//    switch (type)
+//    {
+//    case IL::OPERAND:
+//    case IL::ASSIGNMENT:
+//    case IL::FUNC_CALL:
+//    case IL::VARIABLE:
+//    case IL::CONSTANT:
+//    case IL::TYPE:
+//        return true;
+//    case IL::ERROR:
+//    case IL::DECLARATION:
+//    default:
+//        return false;
+//    }
+//}
 //
-//    ParseFunctionContext(func);
+//bool IsNumChar(char c)
+//{
+//    return c >= '0' && c <= '9';
+//}
 //
-//    currentContext = oldContext;
-//    ParseSpecific(token::BRACKET_CLOSE);
+//bool IsConstant(const token::Token& token)
+//{
+//    if (token.type != token::UNKNOWN)
+//        return false;
+//
+//    StringView val = token.val;
+//    if (val.Size() == 0)
+//        return false;
+//
+//    char c = val[0];
+//    return IsNumChar(c);
+//}
+//
+//inline bool IsTopLevel(const IL::ExpressionPtr& expression)
+//{
+//    auto t = expression->GetType();
+//    return t == IL::DECLARATION || t == IL::ASSIGNMENT || t == IL::FUNC_CALL || t == IL::ERROR;
+//}
+//
+///**************** Builder *************/
+//
+//Builder::Builder(token::Tokenizer& tokenizer)
+//    : tokenizer(tokenizer), functionSet()
+//{
+//    //currentContext = IL::Context::GetTopLevel();
+//    //InitBuiltins();
+//}
+//
+//void Builder::Build()
+//{
+//    while (true)
+//    {
+//        if (tokenizer.size() == 0)
+//        {
+//            bool success = tokenizer.Advance();
+//            if (!success && tokenizer.size() == 0)
+//                return;
+//        }
+//
+//        std::cout << "Finding function..." << std::endl;
+//
+//        // Only functions are allowed at the top level at the moment
+//        IL::FunctionExpressionPtr func = ParseFunction();
+//        functionSet.push_back(func);
+//        //currentContext->AddFunction(func);
+//    }
+//}
+//
+//void Builder::DebugPrint() const
+//{
+//    IL::TreePrinter printer;
+//    printer.Print("=== Begin Tree Output ===");
+//    printer.PrintLine();
+//
+//    for (auto& func : functionSet)
+//    {
+//        func->DebugPrint(printer);
+//        printer.PrintLine();
+//    }
+//}
+//
+//void Builder::Load(int amount)
+//{
+//    if (tokenizer.size() >= amount)
+//        return;
+//
+//    while (tokenizer.size() < amount)
+//    {
+//        bool success = tokenizer.Advance();
+//        if (!success)
+//            throw FrontEndException("Unexpected end of file");
+//    }
+//}
+//
+///************* Parse Function ********************/
+//
+//IL::FunctionExpressionPtr Builder::ParseFunction()
+//{
+//    std::cout << "Parsing Function" << std::endl;
+//    IL::FunctionExpressionPtr func = ParseFunctionSig();
+//    if (func->GetType() == IL::ERROR)
+//        return func;
+//
+//    ParseFunctionArgs(func);
+//    ParseExpressionSet(func->expressions);
 //
 //    return func;
 //}
 //
-//IL::FunctionSignaturePtr Builder::ParseFuncSig(IL::ContextPtr funcContext)
+//IL::FunctionExpressionPtr Builder::ParseFunctionSig()
 //{
-//    IL::TypePtr returntype = ParseType();
-//    StringView name = ParseIdentifier();
-//    if (currentContext->IsNameUsed(name))
-//        throw FrontEndException("The name '" + static_cast<std::string>(name) + "' is already being used.");
+//    Load(3);
+//    const Token& tok1 = tokenizer.At(0);
+//    const Token& tok2 = tokenizer.At(1);
+//    const Token& tok3 = tokenizer.At(2);
 //
-//    auto sig = std::make_shared<IL::FunctionSignature>();
-//    sig->name = name;
-//    sig->returnType = returntype;
+//    tokenizer.Consume();
+//    tokenizer.Consume();
+//    tokenizer.Consume();
 //
-//    ParseSpecific(token::PAREN_OPEN);
-//    ParseFunctionArgs(sig, funcContext);
-//    ParseSpecific(token::PAREN_CLOSE);
+//    if (tok1.type != token::UNKNOWN)
+//        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok1.ToString() + "', expected function definition.");
+//    if (tok2.type != token::UNKNOWN)
+//        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok2.ToString() + "', expected function definition.");
+//    if (tok3.type != token::PAREN_OPEN)
+//        return IL::CreateError<IL::FunctionExpression>("Unexpected token '" + tok3.ToString() + "', expected '(' for function definition.");
 //
-//    return sig;
+//    auto expr = std::make_shared<IL::FunctionExpression>();
+//    expr->returnType = tok1.val;
+//    expr->name = tok2.val;
+//
+//    return expr;
 //}
 //
-//void Builder::ParseFunctionArgs(IL::FunctionSignaturePtr sig, IL::ContextPtr funcContext)
+//void Builder::ParseFunctionArgs(IL::FunctionExpressionPtr func)
+//{
+//    std::cout << "Parsing func args" << std::endl;
+//
+//    Load(1);
+//    const Token& firstTok = tokenizer.Current();
+//    if (firstTok.type == token::PAREN_CLOSE)
+//    {
+//        tokenizer.Consume();
+//        return;
+//    }
+//
+//    while (true)
+//    {
+//        Load(2);
+//        const Token& tok = tokenizer.Current();
+//        const Token& tok2 = tokenizer.At(1);
+//
+//        auto declExpr = DoDeclarationExpression(tok, tok2, nullptr); // DoDeclarationExpression consumes the 2 tokens
+//        func->args.push_back(declExpr);
+//
+//        Load(1);
+//        const Token& tok3 = tokenizer.Current();
+//        if (tok3.type == token::PAREN_CLOSE)
+//        {
+//            tokenizer.Consume();
+//            break;
+//        }
+//
+//        // If it's not a close paren, it must be a comma
+//        if (tok3.type != token::COMMA)
+//        {
+//            auto error = IL::CreateError<IL::DeclarationExpression>("Unexpected token '" + tok3.ToString() + "'. Expected '('.");
+//            func->args.push_back(error);
+//            tokenizer.Consume();
+//            break;
+//        }
+//
+//        // Eat comma
+//        tokenizer.Consume();
+//    }
+//}
+//
+//void Builder::ParseExpressionSet(std::vector<IL::ExpressionPtr>& expressions)
+//{
+//    std::cout << "Parsing Function Expressions..." << std::endl;
+//
+//    expressions.clear();
+//
+//    Load(1);
+//    const Token& starttok = tokenizer.Current();
+//    if (starttok.type != token::BRACKET_OPEN)
+//    {
+//        expressions.push_back(MakeError("Unexpected token '" + starttok.ToString() + "'. Expected '{'."));
+//        return;
+//    }
+//
+//    // Eat '{'
+//    tokenizer.Consume();
+//
+//    while (true)
+//    {
+//        Load(1);
+//        auto& tok = tokenizer.Current();
+//        if (tok.type == token::BRACKET_CLOSE)
+//        {
+//            tokenizer.Consume();
+//            break;
+//        }
+//
+//        IL::ExpressionPtr expr = ParseTopExpression();
+//        expressions.push_back(expr);
+//    }
+//}
+//
+//
+///********** PARSE EXPRESSION ***************************/
+//
+//IL::ExpressionPtr Builder::ParseTopExpression()
+//{
+//    std::cout << "Parsing Expression" << std::endl;
+//
+//    IL::ExpressionPtr expr = ParseSubExpression(nullptr);
+//    while (true)
+//    {
+//        Load(1);
+//        if (tokenizer.Current().type == token::SEMICOLON)
+//        {
+//            tokenizer.Consume();
+//            break;
+//        }
+//
+//        expr = ParseSubExpression(expr);
+//    }
+//
+//    return expr;
+//}
+//
+//IL::ExpressionPtr Builder::ParseSubExpression(IL::ExpressionPtr lhs)
 //{
 //    Load(1);
 //    const Token& tok = tokenizer.Current();
-//    if (tok.type == token::PAREN_CLOSE)
-//        return;
 //
-//    while (true)
+//    switch (tok.type)
 //    {
-//        IL::VariablePtr variable = std::make_shared<IL::Variable>();
-//        variable->type = ParseType();
-//        variable->name = ParseIdentifier();
-//
-//        funcContext->AddVariable(variable);
-//        sig->argumentTypes.push_back(variable->type);
-//
-//        Load(1);
-//        const Token& nextTok = tokenizer.Current();
-//        if (nextTok.type == token::PAREN_CLOSE)
-//            return;
-//
-//        ParseSpecific(token::COMMA);
+//        case token::SEMICOLON:
+//            return MakeError("Unexpected token ';'");
+//        case token::PLUS:
+//            return AsExpression( DoOperandExpression(IL::PLUS, lhs) );
+//        case token::MINUS:
+//            return AsExpression( DoOperandExpression(IL::MINUS, lhs) );
+//        case token::STAR:
+//            return AsExpression( DoOperandExpression(IL::TIMES, lhs) );
+//        case token::SLASH:
+//            return AsExpression( DoOperandExpression(IL::DIVIDES, lhs) );
+//        case token::EQUALS:
+//            return AsExpression( DoAssignmentExpression(lhs) );
+//        case token::UNKNOWN:
+//        {
+//            if (IsConstant(tok))
+//                return DoConstantExpression(tok, lhs);
+//            Load(2);
+//            const token::Token& tok2 = tokenizer.At(1);
+//            if (tok2.type == token::UNKNOWN)
+//                return DoDeclarationExpression(tok, tok2, lhs);
+//            return DoVariableExpression(tok, lhs);
+//        }
+//        default:
+//            tokenizer.Consume();
+//            return MakeError("Unexpected token '"+ tok.ToString() +"'");
 //    }
+//    return MakeError("FATAL: should never be reached");
 //}
 //
-//void Builder::ParseFunctionContext(IL::FunctionPtr func)
+//IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs)
 //{
-//    // Once we are inside a function, parse a full context
-//    // worth of stuff
+//    std::cout << "Found Operand" << std::endl;
+//    tokenizer.Consume();
 //
-//    while (true)
-//    {
-//        Load(1);
-//        const token::Token& tok = tokenizer.Current();
-//        if (tok.type == token::BRACKET_CLOSE)
-//            return;
+//    if (!IsTypedExpression(lhs))
+//        return IL::CreateError<IL::OperandExpression>("Unexpected token '+'.");
 //
-//        // ParseExpression will return a ErrorExpression if something fails
-//        IL::ExpressionPtr expr = ParseExpression();
-//        func->AddExpression(expr);
-//    }
+//    IL::ExpressionPtr rhs = ParseSubExpression(nullptr);
+//    if (rhs->GetType() == IL::ERROR)
+//        return IL::RecastError<IL::OperandExpression>(rhs);
+//
+//    if (!IsTypedExpression(rhs))
+//        return IL::CreateError<IL::OperandExpression>("Invalid second argument for '+'.");
+//
+//    IL::TypedExpressionPtr typedL = AsTyped(lhs);
+//    IL::TypedExpressionPtr typedR = AsTyped(rhs);
+//
+//    auto expr = std::make_shared<IL::OperandExpression>();
+//    expr->type = optype;
+//    expr->left = typedL;
+//    expr->right = typedR;
+//
+//    return contextManager.Process(expr);
 //}
-
-
-
-/********** PARSE EXPRESSION ***************************/
-
-IL::ExpressionPtr Builder::ParseTopExpression()
-{
-    std::cout << "Parsing Expression" << std::endl;
-
-    IL::ExpressionPtr expr = ParseSubExpression(nullptr);
-    while (true)
-    {
-        Load(1);
-        if (tokenizer.Current().type == token::SEMICOLON)
-        {
-            tokenizer.Consume();
-            break;
-        }
-
-        expr = ParseSubExpression(expr);
-    }
-
-    return expr;
-}
-
-IL::ExpressionPtr Builder::ParseSubExpression(IL::ExpressionPtr lhs)
-{
-    Load(1);
-    const Token& tok = tokenizer.Current();
-
-    switch (tok.type)
-    {
-        case token::SEMICOLON:
-            return MakeError("Unexpected token ';'");
-        case token::PLUS:
-            return AsExpression( DoOperandExpression(IL::PLUS, lhs) );
-        case token::MINUS:
-            return AsExpression( DoOperandExpression(IL::MINUS, lhs) );
-        case token::STAR:
-            return AsExpression( DoOperandExpression(IL::TIMES, lhs) );
-        case token::SLASH:
-            return AsExpression( DoOperandExpression(IL::DIVIDES, lhs) );
-        case token::EQUALS:
-            return AsExpression( DoAssignmentExpression(lhs) );
-        case token::UNKNOWN:
-        {
-            if (IsConstant(tok))
-                return DoConstantExpression(tok, lhs);
-            Load(2);
-            const token::Token& tok2 = tokenizer.At(1);
-            if (tok2.type == token::UNKNOWN)
-                return DoDeclarationExpression(tok, tok2, lhs);
-            return DoVariableExpression(tok, lhs);
-        }
-        default:
-            tokenizer.Consume();
-            return MakeError("Unexpected token '"+ tok.ToString() +"'");
-    }
-    return MakeError("FATAL: should never be reached");
-}
-
-IL::OperandExpressionPtr Builder::DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs)
-{
-    std::cout << "Found Operand" << std::endl;
-    tokenizer.Consume();
-
-    if (!IsTypedExpression(lhs))
-        return IL::CreateError<IL::OperandExpression>("Unexpected token '+'.");
-
-    IL::ExpressionPtr rhs = ParseSubExpression(nullptr);
-    if (rhs->GetType() == IL::ERROR)
-        return IL::RecastError<IL::OperandExpression>(rhs);
-
-    if (!IsTypedExpression(rhs))
-        return IL::CreateError<IL::OperandExpression>("Invalid second argument for '+'.");
-
-    IL::TypedExpressionPtr typedL = AsTyped(lhs);
-    IL::TypedExpressionPtr typedR = AsTyped(rhs);
-
-    auto expr = std::make_shared<IL::OperandExpression>();
-    expr->type = optype;
-    expr->left = typedL;
-    expr->right = typedR;
-
-    return contextManager.Process(expr);
-}
-
-IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lhs)
-{
-    std::cout << "Found assignment" << std::endl;
-    tokenizer.Consume();
-
-    if (lhs == nullptr)
-        return IL::CreateError<IL::AssignmentExpression>("Unexpected token '='. Expected variable name.");
-
-    if (lhs->GetType() != IL::VARIABLE)
-        return IL::CreateError<IL::AssignmentExpression>("Invalid assignment, can only assign to a variable");
-    auto variable = std::static_pointer_cast<IL::VariableExpression>(lhs);
-
-    auto rhs = ParseSubExpression(nullptr);
-
-    if (rhs->GetType() == IL::ERROR)
-        return IL::RecastError<IL::AssignmentExpression>(rhs);
-
-    if (!IsTypedExpression(rhs))
-        return IL::CreateError<IL::AssignmentExpression>("Invalid assignment value.");
-
-    auto assignment = std::make_shared<IL::AssignmentExpression>();
-    assignment->variable = variable;
-    assignment->value = AsTyped(rhs);
-
-    return contextManager.Process(assignment);
-}
-
-IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs)
-{
-    std::cout << "Found Declaration" << std::endl;
-    tokenizer.Consume();
-    tokenizer.Consume();
-
-    if (lhs != nullptr)
-        return IL::CreateError<IL::DeclarationExpression>("Unexpected token '"+ typeTok.ToString() +"'. Expected ';'");
-
-    auto expr = std::make_shared<IL::DeclarationExpression>();
-
-    expr->type = typeTok.val;
-    expr->name = varTok.val;
-
-    return contextManager.Process(expr);
-}
-
-IL::VariableExpressionPtr Builder::DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs)
-{
-    std::cout << "Found Variable" << std::endl;
-    tokenizer.Consume();
-    if (lhs != nullptr)
-        return IL::CreateError<IL::VariableExpression>("Unexpected token '" + varTok.ToString() + "'. Expected ';'.");
-
-    auto expr = std::make_shared<IL::VariableExpression>();
-    expr->name = varTok.val;
-    return contextManager.Process(expr);
-}
-
-IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
-{
-    std::cout << "Found const" << std::endl;
-    tokenizer.Consume();
-    if (lhs != nullptr)
-        return IL::CreateError<IL::ConstantExpression>("Unexpected token '" + cTok.ToString() +  "'. Expected ';'");
-
-    const StringView& raw = cTok.val;
-    for (int i = 0; i < raw.Size(); i++)
-    {
-        if (!IsNumChar(raw[i]))
-            return IL::CreateError<IL::ConstantExpression>("Invalid name '"+ static_cast<std::string>(raw) +"'. Variables can't start with numerals.");
-    }
-
-    auto expr = std::make_shared<IL::ConstantExpression>();
-    expr->constant = raw;
-
-    return contextManager.Process(expr);
-}
-
-
-IL::ExpressionPtr Builder::DoUnknown(const token::Token& cTok, IL::ExpressionPtr lhs)
-{
-    assert(cTok.type == token::UNKNOWN);
-
-    bool var, func, type;
-    contextManager.Current().TypeOfName(cTok.val, &var, &func, &type);
-
-    if (var)
-    {
-        if (lhs == nullptr)
-            return DoVariableExpression(cTok, lhs);
-        if (lhs->GetType() == 
-    }
-
-    if (func)
-        return IL::CreateError<IL::ExpressionPtr>("Function calls not implemented yet.");
-
-    if (type)
-        return DoTypeExpression(cTok, lhs);
-
-    return IL::CreateError<IL::Expression>("Unknown name '"+ static_cast<std::string>(cTok.val) +"'.");
-}
-
-IL::TypeExpressionPtr Builder::DoTypeExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
-{
-    assert(cTok.type == token::UNKNOWN);
-
-    if (lhs == nullptr)
-        return IL::CreateError<TypeExpression>("Unexpected token '"+ cTok.ToString() + "'.");
-
-    
-}
+//
+//IL::AssignmentExpressionPtr Builder::DoAssignmentExpression(IL::ExpressionPtr lhs)
+//{
+//    std::cout << "Found assignment" << std::endl;
+//    tokenizer.Consume();
+//
+//    if (lhs == nullptr)
+//        return IL::CreateError<IL::AssignmentExpression>("Unexpected token '='. Expected variable name.");
+//
+//    if (lhs->GetType() != IL::VARIABLE)
+//        return IL::CreateError<IL::AssignmentExpression>("Invalid assignment, can only assign to a variable");
+//    auto variable = std::static_pointer_cast<IL::VariableExpression>(lhs);
+//
+//    auto rhs = ParseSubExpression(nullptr);
+//
+//    if (rhs->GetType() == IL::ERROR)
+//        return IL::RecastError<IL::AssignmentExpression>(rhs);
+//
+//    if (!IsTypedExpression(rhs))
+//        return IL::CreateError<IL::AssignmentExpression>("Invalid assignment value.");
+//
+//    auto assignment = std::make_shared<IL::AssignmentExpression>();
+//    assignment->variable = variable;
+//    assignment->value = AsTyped(rhs);
+//
+//    return contextManager.Process(assignment);
+//}
+//
+//IL::DeclarationExpressionPtr Builder::DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs)
+//{
+//    std::cout << "Found Declaration" << std::endl;
+//    tokenizer.Consume();
+//    tokenizer.Consume();
+//
+//    if (lhs != nullptr)
+//        return IL::CreateError<IL::DeclarationExpression>("Unexpected token '"+ typeTok.ToString() +"'. Expected ';'");
+//
+//    auto expr = std::make_shared<IL::DeclarationExpression>();
+//
+//    expr->type = typeTok.val;
+//    expr->name = varTok.val;
+//
+//    return contextManager.Process(expr);
+//}
+//
+//IL::VariableExpressionPtr Builder::DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs)
+//{
+//    std::cout << "Found Variable" << std::endl;
+//    tokenizer.Consume();
+//    if (lhs != nullptr)
+//        return IL::CreateError<IL::VariableExpression>("Unexpected token '" + varTok.ToString() + "'. Expected ';'.");
+//
+//    auto expr = std::make_shared<IL::VariableExpression>();
+//    expr->name = varTok.val;
+//    return contextManager.Process(expr);
+//}
+//
+//IL::ConstantExpressionPtr Builder::DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
+//{
+//    std::cout << "Found const" << std::endl;
+//    tokenizer.Consume();
+//    if (lhs != nullptr)
+//        return IL::CreateError<IL::ConstantExpression>("Unexpected token '" + cTok.ToString() +  "'. Expected ';'");
+//
+//    const StringView& raw = cTok.val;
+//    for (int i = 0; i < raw.Size(); i++)
+//    {
+//        if (!IsNumChar(raw[i]))
+//            return IL::CreateError<IL::ConstantExpression>("Invalid name '"+ static_cast<std::string>(raw) +"'. Variables can't start with numerals.");
+//    }
+//
+//    auto expr = std::make_shared<IL::ConstantExpression>();
+//    expr->constant = raw;
+//
+//    return contextManager.Process(expr);
+//}
+//
+//
+//IL::ExpressionPtr Builder::DoUnknown(const token::Token& cTok, IL::ExpressionPtr lhs)
+//{
+//    assert(cTok.type == token::UNKNOWN);
+//
+//    bool var, func, type;
+//    contextManager.Current().TypeOfName(cTok.val, &var, &func, &type);
+//
+//    if (var)
+//    {
+//        if (lhs == nullptr)
+//            return DoVariableExpression(cTok, lhs);
+//        if (lhs->GetType() == 
+//    }
+//
+//    if (func)
+//        return IL::CreateError<IL::ExpressionPtr>("Function calls not implemented yet.");
+//
+//    if (type)
+//        return DoTypeExpression(cTok, lhs);
+//
+//    return IL::CreateError<IL::Expression>("Unknown name '"+ static_cast<std::string>(cTok.val) +"'.");
+//}
+//
+//IL::TypeExpressionPtr Builder::DoTypeExpression(const token::Token& cTok, IL::ExpressionPtr lhs)
+//{
+//    assert(cTok.type == token::UNKNOWN);
+//
+//    if (lhs == nullptr)
+//        return IL::CreateError<TypeExpression>("Unexpected token '"+ cTok.ToString() + "'.");
+//
+//    
+//}
 
 
 
@@ -615,7 +478,7 @@ std::shared_ptr<T> Downcast(std::shared_ptr<U> val)
 {
     auto casted = std::dynamic_pointer_cast<T>(val);
     if (casted == nullptr)
-        throw FrontendException("INTERNAL ERROR: downcast failed.");
+        throw frontend::FrontEndException("INTERNAL ERROR: downcast failed.");
     return casted;
 }
 
@@ -633,7 +496,8 @@ do { \
 if (!RequireSpecific( required )) { \
     auto& macrotok = tokenizer.Current(); \
     tokenizer.Consume(); \
-    return ErrorExpected< type >(macrotok, (expecting)); \
+    return ErrorExpecting< type >(macrotok, (expecting)); \
+} \
 } \
 while (false)
 
@@ -655,7 +519,7 @@ bool IsTyped(IL::ExpressionPtr expr)
 
 //// Process Functions
 
-IL::ExpressionPtr Process(IL::ExpressionPtr lhs)
+IL::ExpressionPtr Builder::Process(IL::ExpressionPtr lhs)
 {
     Load(1);
     const token::Token& tok = tokenizer.Current();
@@ -674,7 +538,7 @@ IL::ExpressionPtr Process(IL::ExpressionPtr lhs)
         case token::STAR:
             return HandleOperand(IL::TIMES, lhs);
         case token::SLASH:
-            return HandleOperand(IL::DIVIDE, lhs);
+            return HandleOperand(IL::DIVIDES, lhs);
         case token::EQUALS:
         {
             return HandleAssignment(lhs);
@@ -685,13 +549,13 @@ IL::ExpressionPtr Process(IL::ExpressionPtr lhs)
     return ErrorUnexpected<IL::Expression>(tok);
 }
 
-IL::ExpressionPtr UnknownToExpression(StringView val)
+IL::ExpressionPtr Builder::UnknownToExpression(StringView val)
 {
     if (IsConst(val))
         return Upcast<IL::Expression>( factory.CreateConstant(val) );
 
     bool var, func, type;
-    contextManager.TypeOfName(val, &var, &func, &type);
+    contextManager.Current()->TypeOfName(val, &var, &func, &type);
 
     if (var)
         return Upcast<IL::Expression>( factory.CreateVariable(val) );
@@ -705,7 +569,7 @@ IL::ExpressionPtr UnknownToExpression(StringView val)
     return Upcast<IL::Expression>( factory.CreateIdentifier(val) );
 }
 
-IL::ExpressionPtr HandleUnknown(IL::ExpressionPtr lhs, IL::ExpressionPtr rhs)
+IL::ExpressionPtr Builder::HandleUnknown(IL::ExpressionPtr lhs, IL::ExpressionPtr rhs)
 {
     assert(rhs != nullptr);
     if (lhs == nullptr)
@@ -716,23 +580,25 @@ IL::ExpressionPtr HandleUnknown(IL::ExpressionPtr lhs, IL::ExpressionPtr rhs)
 
     if (ltype == IL::TYPE && rtype == IL::VARIABLE)
     {
-        return CreateError<IL::Expression>("Name already used.");
+        return IL::CreateError<IL::Expression>("Name already used.");
     }
 
     if (rtype == IL::FUNCTION)
     {
-        return CreateError<IL::Expression>("Function calls are not implemented.");
+        return IL::CreateError<IL::Expression>("Function calls are not implemented.");
     }
 
     if (ltype == IL::TYPE && rtype == IL::IDENTIFIER)
     {
-        return factory.CreateDeclaration(lhs, rhs);
+        auto type = Downcast<IL::TypeExpression>(lhs);
+        auto id = Downcast<IL::IdentifierExpression>(rhs);
+        return factory.CreateDeclaration(type, id);
     }
 
-    return CreateError<IL::Expression>("Unexpected identifier.");
+    return IL::CreateError<IL::Expression>("Unexpected identifier.");
 }
 
-IL::ExpressionPtr HandleOperand(IL::OperandType type, IL::ExpressionPtr lhs)
+IL::ExpressionPtr Builder::HandleOperand(IL::OperandType type, IL::ExpressionPtr lhs)
 {
     if (!IsTyped(lhs))
         return IL::CreateError<IL::Expression>("Unexpected operator.");
@@ -743,7 +609,7 @@ IL::ExpressionPtr HandleOperand(IL::OperandType type, IL::ExpressionPtr lhs)
     return Upcast<IL::Expression>( factory.CreateOperand(type, ltyped, rhs) );
 }
 
-IL::ExpressionPtr HandleAssignment(IL::ExpressionPtr lhs)
+IL::ExpressionPtr Builder::HandleAssignment(IL::ExpressionPtr lhs)
 {
     if (lhs == nullptr || lhs->GetType() != IL::VARIABLE)
         return IL::CreateError<IL::Expression>("Unexpected '=', can only assign to a variable.");
@@ -755,7 +621,7 @@ IL::ExpressionPtr HandleAssignment(IL::ExpressionPtr lhs)
 
 // Take in a token and previously found typed expression. If the token can't be a
 //  typedexpression, then returns nullptr.
-IL::TypedExpressionPtr ProcessTyped(const token::Token& tok, IL::TypedExpressionPtr lhs)
+IL::TypedExpressionPtr Builder::ProcessTyped(const token::Token& tok, IL::TypedExpressionPtr lhs)
 {
     switch (tok.type)
     {
@@ -765,7 +631,7 @@ IL::TypedExpressionPtr ProcessTyped(const token::Token& tok, IL::TypedExpression
                 return nullptr;
 
             bool var, func, type;
-            contextManager.Current().FindType(tok.val, &var, &func, &type);
+            contextManager.Current()->TypeOfName(tok.val, &var, &func, &type);
             if (var)
             {
                 auto variable = factory.CreateVariable(tok.val);
@@ -787,10 +653,10 @@ IL::TypedExpressionPtr ProcessTyped(const token::Token& tok, IL::TypedExpression
     }
 }
 
-IL::TypedExpressionPtr HandleTypedOperand(IL::ExpressionType type, IL::TypedExpressionPtr lhs)
+IL::TypedExpressionPtr Builder::HandleTypedOperand(IL::OperandType type, IL::TypedExpressionPtr lhs)
 {
     if (lhs == nullptr)
-        return IL::CreateError<IL::TypedExpression>("Unexpected operator.");
+        return Upcast<IL::TypedExpression>( IL::CreateError<IL::VariableExpression>("Unexpected operator.") );
 
     IL::TypedExpressionPtr rhs = RequireTyped();
     return Upcast<IL::TypedExpression>( factory.CreateOperand(type, lhs, rhs) );
@@ -803,7 +669,7 @@ IL::TypedExpressionPtr HandleTypedOperand(IL::ExpressionType type, IL::TypedExpr
 
 // Requires a single token of a particular type
 // Only consumes the token if it was expected.
-bool RequireSpecific(token::TokenType tokentype)
+bool Builder::RequireSpecific(token::TokenType tokentype)
 {
     assert(tokentype != token::UNKNOWN);
     Load(1);
@@ -815,36 +681,36 @@ bool RequireSpecific(token::TokenType tokentype)
     return true;
 }
 
-IL::TypeExpressionPtr RequireType()
+IL::TypeExpressionPtr Builder::RequireType()
 {
     Load(1);
     const token::Token& tok = tokenizer.Current();
     tokenizer.Consume();
-    if (tok.type != UNKNOWN)
-        return ErrorExpected<IL::TypeExpression>(tok, "a known type.");
+    if (tok.type != token::UNKNOWN)
+        return ErrorExpecting<IL::TypeExpression>(tok, "a known type.");
 
-    return factory.CreateType(tok.va);
+    return factory.CreateType(tok.val);
 }
 
-IL::IdentifierExpressionPtr RequireIdentifier()
+IL::IdentifierExpressionPtr Builder::RequireIdentifier()
 {
     Load(1);
     const token::Token& tok = tokenizer.Current();
     tokenizer.Consume();
-    if (tok.type != UNKNOWN)
-        return ErrorExpected<IL::IdentifierExpression>(tok, "an identifier.");
+    if (tok.type != token::UNKNOWN)
+        return ErrorExpecting<IL::IdentifierExpression>(tok, "an identifier.");
 
     return factory.CreateIdentifier(tok.val);
 }
 
-IL::DeclarationExpressionPtr RequireDeclaration()
+IL::DeclarationExpressionPtr Builder::RequireDeclaration()
 {
     auto type = RequireType();
     auto id = RequireIdentifier();
     return factory.CreateDeclaration(type, id);
 }
 
-IL::ExpressionPtr RequireStatement()
+IL::ExpressionPtr Builder::RequireStatement()
 {
     IL::ExpressionPtr current = nullptr;
     while (true)
@@ -857,7 +723,7 @@ IL::ExpressionPtr RequireStatement()
             if (current == nullptr)
                 return ErrorUnexpected<IL::Expression>(tok);
             if (!IsStatement(current))
-                return IL::CreateError("A statement can only be either a declaration, assignment, or function call.");
+                return IL::CreateError<IL::Expression>("A statement can only be either a declaration, assignment, or function call.");
             return current;
         }
 
@@ -869,7 +735,7 @@ IL::ExpressionPtr RequireStatement()
     }
 }
 
-IL::TypedExpressionPtr RequireTyped()
+IL::TypedExpressionPtr Builder::RequireTyped()
 {
     IL::TypedExpressionPtr current = nullptr;
     while (true)
@@ -884,7 +750,7 @@ IL::TypedExpressionPtr RequireTyped()
             if (current == nullptr)
             {
                 tokenizer.Consume();
-                return ErrorUnexpected<IL::TypedExpression>(tok);
+                return Upcast<IL::TypedExpression>( ErrorUnexpected<IL::VariableExpression>(tok) );
             }
             return current;
         }
@@ -894,7 +760,7 @@ IL::TypedExpressionPtr RequireTyped()
     }
 }
 
-IL::SubContextExpressionPtr RequireSubContext()
+IL::SubContextExpressionPtr Builder::RequireSubContext()
 {
     REQUIRE_OR_RETURN(token::BRACKET_OPEN, IL::SubContextExpression, "'{'");
 
@@ -918,7 +784,7 @@ IL::SubContextExpressionPtr RequireSubContext()
     return subcontext;
 }
 
-IL::FuncDeclArgsExpressionPtr RequireFuncDeclArgs()
+IL::FuncDeclArgsExpressionPtr Builder::RequireFuncDeclArgs()
 {
     REQUIRE_OR_RETURN(token::PAREN_OPEN, IL::FuncDeclArgsExpression, "'('");
 
@@ -943,7 +809,7 @@ IL::FuncDeclArgsExpressionPtr RequireFuncDeclArgs()
         }
         else
         {
-            REQUIRE_OR_RETURN(token::COMMA, IL::FuncDelcArgsExpression, "','");
+            REQUIRE_OR_RETURN(token::COMMA, IL::FuncDeclArgsExpression, "','");
         }
 
         IL::DeclarationExpressionPtr decl = RequireDeclaration();
@@ -951,15 +817,24 @@ IL::FuncDeclArgsExpressionPtr RequireFuncDeclArgs()
     }
 
     REQUIRE_OR_RETURN(token::PAREN_CLOSE, IL::FuncDeclArgsExpression, "')'");
+
+    return funcArgs;
 }
 
-IL::FunctionDeclarationExpressionPtr RequireFunctionDeclaration()
+IL::FunctionDeclarationExpressionPtr Builder::RequireFunctionDeclaration()
 {
     auto decl = RequireDeclaration();
-    auto args = RequireFunctionDeclArgs();
+    auto args = RequireFuncDeclArgs();
     auto subcontext = RequireSubContext();
 
     return factory.CreateFunctionDeclaration(decl, args, subcontext);
+}
+
+/*** Public functions ***/
+
+Builder::Builder(token::Tokenizer& tokenizer)
+    : contextManager(), factory(contextManager), tokenizer(tokenizer), functionSet()
+{
 }
 
 void Builder::Build()
@@ -976,13 +851,37 @@ void Builder::Build()
         std::cout << "Finding function..." << std::endl;
 
         // Only functions are allowed at the top level at the moment
-        IL::FunctionDeclarationExpressionPtr func = RequireFunction();
+        IL::FunctionDeclarationExpressionPtr func = RequireFunctionDeclaration();
         functionSet.push_back(func);
         //currentContext->AddFunction(func);
     }
 
 }
 
+void Builder::DebugPrint() const
+{
+    IL::TreePrinter printer;
+    printer.Print("=== Begin Tree Output ===");
+    printer.PrintLine();
 
+    for (auto& func : functionSet)
+    {
+        func->DebugPrint(printer);
+        printer.PrintLine();
+    }
+}
+
+void Builder::Load(int amount)
+{
+    if (tokenizer.size() >= amount)
+        return;
+
+    while (tokenizer.size() < amount)
+    {
+        bool success = tokenizer.Advance();
+        if (!success)
+            throw FrontEndException("Unexpected end of file");
+    }
+}
 
 

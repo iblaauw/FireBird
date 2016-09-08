@@ -20,6 +20,10 @@ namespace IL
         CONSTANT,
         FUNCTION,
         TYPE,
+        IDENTIFIER,
+        SUBCONTEXT,
+        FUNC_DECL_ARGS,
+        FUNC_DECL,
     };
 
     class Expression

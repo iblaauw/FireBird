@@ -13,7 +13,7 @@ namespace IL
         TypePtr type;
 
         ExpressionType GetType() const override { return TYPE; }
-        void DebugPrint(TreePrinter& printer) const override { printer.Print(type.value); }
+        void DebugPrint(TreePrinter& printer) const override { printer.Print(type->value); }
         TypePtr GetILType() const override { return type; }
     };
 

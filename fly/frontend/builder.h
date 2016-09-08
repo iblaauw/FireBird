@@ -2,6 +2,7 @@
 
 #include "contextmanager.h"
 #include "tokenizer.h"
+#include "expressionfactory.h"
 
 #include "expression.h"
 #include "functionexpression.h"
@@ -10,6 +11,8 @@
 #include "declarationexpression.h"
 #include "variableexpression.h"
 #include "constantexpression.h"
+#include "identifierexpression.h"
+#include "functiondeclarationexpression.h"
 
 #include <vector>
 
@@ -23,8 +26,9 @@ namespace frontend
     {
     private:
         ContextManager contextManager;
+        ExpressionFactory factory;
         firefly::token::Tokenizer& tokenizer;
-        std::vector<firefly::IL::FunctionExpressionPtr> functionSet;
+        std::vector<firefly::IL::FunctionDeclarationExpressionPtr> functionSet;
     public:
         Builder(firefly::token::Tokenizer& tokenizer);
         void Build();
@@ -33,40 +37,48 @@ namespace frontend
     private:
         void Load(int amount);
 
-        IL::FunctionExpressionPtr ParseFunction();
-        IL::FunctionExpressionPtr ParseFunctionSig();
-        void ParseFunctionArgs(IL::FunctionExpressionPtr func);
+        // Processing statements
+        IL::ExpressionPtr Process(IL::ExpressionPtr lhs);
 
-        void ParseExpressionSet(std::vector<IL::ExpressionPtr>& expressions);
+        // Helpers for Process
+        IL::ExpressionPtr UnknownToExpression(StringView val);
+        IL::ExpressionPtr HandleUnknown(IL::ExpressionPtr lhs, IL::ExpressionPtr rhs);
+        IL::ExpressionPtr HandleOperand(IL::OperandType type, IL::ExpressionPtr lhs);
+        IL::ExpressionPtr HandleAssignment(IL::ExpressionPtr lhs);
 
-        IL::ExpressionPtr ParseTopExpression();
-        IL::ExpressionPtr ParseSubExpression(IL::ExpressionPtr lhs);
+        // Typed expressions
+        IL::TypedExpressionPtr ProcessTyped(const token::Token& tok, IL::TypedExpressionPtr lhs);
+        IL::TypedExpressionPtr HandleTypedOperand(IL::OperandType type, IL::TypedExpressionPtr lhs);
 
-        IL::OperandExpressionPtr DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs);
-        IL::AssignmentExpressionPtr DoAssignmentExpression(IL::ExpressionPtr lhs);
-        IL::DeclarationExpressionPtr DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs);
-        IL::VariableExpressionPtr DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs);
-        IL::ConstantExpressionPtr DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs);
+        // Requires
+        bool RequireSpecific(token::TokenType tokentype);
+        IL::TypeExpressionPtr RequireType();
+        IL::IdentifierExpressionPtr RequireIdentifier();
+        IL::DeclarationExpressionPtr RequireDeclaration();
+        IL::ExpressionPtr RequireStatement();
+        IL::TypedExpressionPtr RequireTyped();
+        IL::SubContextExpressionPtr RequireSubContext();
+        IL::FuncDeclArgsExpressionPtr RequireFuncDeclArgs();
+        IL::FunctionDeclarationExpressionPtr RequireFunctionDeclaration();
+
+        /*** OLD ***/
+
+        //IL::FunctionExpressionPtr ParseFunction();
+        //IL::FunctionExpressionPtr ParseFunctionSig();
+        //void ParseFunctionArgs(IL::FunctionExpressionPtr func);
+
+        //void ParseExpressionSet(std::vector<IL::ExpressionPtr>& expressions);
+
+        //IL::ExpressionPtr ParseTopExpression();
+        //IL::ExpressionPtr ParseSubExpression(IL::ExpressionPtr lhs);
+
+        //IL::OperandExpressionPtr DoOperandExpression(IL::OperandType optype, IL::ExpressionPtr lhs);
+        //IL::AssignmentExpressionPtr DoAssignmentExpression(IL::ExpressionPtr lhs);
+        //IL::DeclarationExpressionPtr DoDeclarationExpression(const token::Token& typeTok, const token::Token& varTok, IL::ExpressionPtr lhs);
+        //IL::VariableExpressionPtr DoVariableExpression(const token::Token& varTok, IL::ExpressionPtr lhs);
+        //IL::ConstantExpressionPtr DoConstantExpression(const token::Token& cTok, IL::ExpressionPtr lhs);
 
 
-        /***** OLD *****/
-
-//        void InitBuiltins();
-//        void Load(int amount); // Load this many tokens from the tokenizer
-//
-//        firefly::IL::TypePtr ParseType();
-//        StringView ParseIdentifier();
-//        void ParseSpecific(firefly::token::TokenType type);
-//
-//        firefly::IL::FunctionPtr ParseFunction();
-//        firefly::IL::FunctionSignaturePtr ParseFuncSig(
-//            firefly::IL::ContextPtr funcContext);
-//        void ParseFunctionArgs(
-//            firefly::IL::FunctionSignaturePtr sig,
-//            firefly::IL::ContextPtr funcContext);
-//        void ParseFunctionContext(firefly::IL::FunctionPtr func);
-//
-//        firefly::IL::ExpressionPtr ParseExpression();
     };
 }
 }
